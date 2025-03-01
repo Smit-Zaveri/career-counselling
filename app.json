@@ -1,0 +1,13 @@
+{
+  "expo": {
+    "name": "jobsift",
+    "slug": "jobsift",
+    "updates": {
+      "enabled": false
+    },
+    "scheme": "acme",
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}
