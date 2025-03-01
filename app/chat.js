@@ -7,6 +7,8 @@ import {
   StyleSheet,
   ScrollView,
   ActivityIndicator,
+  SafeAreaView,
+  RefreshControl,
 } from "react-native";
 import { COLORS, SIZES } from "../constants";
 import { careerGuidanceFlow } from "../utils/aiHelper";
@@ -25,18 +27,28 @@ const Chat = () => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const scrollViewRef = useRef();
 
   useEffect(() => {
-    initializeChat();
+    startNewChat();
+  }, []);
 
+  const startNewChat = () => {
+    initializeChat();
     setMessages([
       {
         text: "Hi! I'm your career guidance assistant. How can I help you today?",
         isUser: false,
       },
     ]);
-  }, []);
+  };
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    startNewChat();
+    setRefreshing(false);
+  };
 
   const sendMessage = async (text = input) => {
     if (!text.trim()) return;
@@ -117,67 +129,79 @@ const Chat = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <ScrollView
-        ref={scrollViewRef}
-        style={styles.messagesContainer}
-        contentContainerStyle={{ paddingBottom: 20 }}
-      >
-        {messages.map((message, index) => (
-          <View
-            key={index}
-            style={[
-              styles.messageBubble,
-              message.isUser ? styles.userMessage : styles.aiMessage,
-            ]}
-          >
-            {renderMessageContent(message)}
-          </View>
-        ))}
-        {isLoading && (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator color={COLORS.primary} size="small" />
-            <Text style={styles.loadingText}>Thinking...</Text>
-          </View>
-        )}
-      </ScrollView>
-
-      {messages.length === 1 && (
-        <View style={styles.suggestionsContainer}>
-          <Text style={styles.suggestionsTitle}>Try asking:</Text>
-          {suggestedQuestions.map((question, index) => (
-            <TouchableOpacity
-              key={index}
-              style={styles.suggestionButton}
-              onPress={() => sendMessage(question)}
-            >
-              <Text style={styles.suggestionText}>{question}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
-
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          value={input}
-          onChangeText={setInput}
-          placeholder="Ask about career advice..."
-          placeholderTextColor={COLORS.gray}
-          multiline
-          maxLength={200}
-        />
-        <TouchableOpacity
-          style={[styles.sendButton, isLoading && styles.sendButtonDisabled]}
-          onPress={() => sendMessage()}
-          disabled={isLoading}
+    <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.lightWhite }}>
+      <View style={styles.container}>
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.messagesContainer}
+          contentContainerStyle={{ paddingBottom: 20 }}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[COLORS.primary]}
+              tintColor={COLORS.primary}
+              title="Pull to restart chat"
+              titleColor={COLORS.gray}
+            />
+          }
         >
-          <Text style={styles.sendButtonText}>
-            {isLoading ? "..." : "Send"}
-          </Text>
-        </TouchableOpacity>
+          {messages.map((message, index) => (
+            <View
+              key={index}
+              style={[
+                styles.messageBubble,
+                message.isUser ? styles.userMessage : styles.aiMessage,
+              ]}
+            >
+              {renderMessageContent(message)}
+            </View>
+          ))}
+          {isLoading && (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator color={COLORS.primary} size="small" />
+              <Text style={styles.loadingText}>Thinking...</Text>
+            </View>
+          )}
+
+          {messages.length === 1 && (
+            <View style={styles.suggestionsContainer}>
+              <Text style={styles.suggestionsTitle}>Try asking:</Text>
+              {suggestedQuestions.map((question, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={styles.suggestionButton}
+                  onPress={() => sendMessage(question)}
+                >
+                  <Text style={styles.suggestionText}>{question}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </ScrollView>
+
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={styles.input}
+            value={input}
+            onChangeText={setInput}
+            placeholder="Ask about career advice..."
+            placeholderTextColor={COLORS.gray}
+            multiline
+            maxLength={200}
+          />
+          <TouchableOpacity
+            style={[styles.sendButton, isLoading && styles.sendButtonDisabled]}
+            onPress={() => sendMessage()}
+            disabled={isLoading}
+          >
+            <Text style={styles.sendButtonText}>
+              {isLoading ? "..." : "Send"}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -185,11 +209,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.lightWhite,
-    marginBottom: 100,
+    marginBottom: 84,
   },
   messagesContainer: {
     flex: 1,
     padding: SIZES.medium,
+    marginBottom: 84,
   },
   messageBubble: {
     maxWidth: "80%",
@@ -213,10 +238,16 @@ const styles = StyleSheet.create({
     color: COLORS.white,
   },
   aiMessageText: {
-    color: COLORS.white,
+    color: "black",
   },
   inputContainer: {
     flexDirection: "row",
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: COLORS.lightWhite,
+
     padding: SIZES.medium,
     borderTopWidth: 1,
     borderTopColor: COLORS.gray2,
@@ -243,6 +274,9 @@ const styles = StyleSheet.create({
     color: COLORS.white,
   },
   suggestionsContainer: {
+    position: "relative",
+    alignSelf: "flex-end",
+    borderRadius: SIZES.small,
     padding: SIZES.medium,
     backgroundColor: "rgba(255,255,255,0.8)",
   },
@@ -274,45 +308,45 @@ const styles = StyleSheet.create({
     color: COLORS.gray,
   },
   markdownBody: {
-    color: COLORS.white,
+    color: "black",
     fontSize: SIZES.small + 2,
   },
   markdownH1: {
-    color: COLORS.white,
+    color: "black",
     fontSize: SIZES.large + 2,
     fontWeight: "bold",
     marginVertical: SIZES.small,
   },
   markdownH2: {
-    color: COLORS.white,
+    color: "black",
     fontSize: SIZES.large,
     fontWeight: "bold",
     marginVertical: SIZES.small / 2,
   },
   markdownH3: {
-    color: COLORS.white,
+    color: "black",
     fontSize: SIZES.medium + 2,
     fontWeight: "bold",
     marginVertical: SIZES.small / 2,
   },
   markdownParagraph: {
-    color: COLORS.white,
+    color: "black",
     fontSize: SIZES.small + 2,
     lineHeight: 22,
     marginVertical: SIZES.small / 2,
   },
   markdownList: {
-    color: COLORS.white,
+    color: "black",
     marginVertical: SIZES.small / 2,
   },
   markdownListItem: {
-    color: COLORS.white,
+    color: "black",
     fontSize: SIZES.small + 2,
     lineHeight: 22,
   },
   markdownCode: {
     backgroundColor: "rgba(0,0,0,0.2)",
-    color: COLORS.white,
+    color: "black",
     padding: SIZES.small / 2,
     borderRadius: SIZES.small / 2,
   },
@@ -322,11 +356,11 @@ const styles = StyleSheet.create({
   },
   markdownStrong: {
     fontWeight: "bold",
-    color: COLORS.white,
+    color: "black",
   },
   markdownEm: {
     fontStyle: "italic",
-    color: COLORS.white,
+    color: "black",
   },
 });
 

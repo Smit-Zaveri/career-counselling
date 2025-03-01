@@ -5,6 +5,7 @@ import { useFonts } from "expo-font";
 import ScreenBottom from "../components/common/bottom/ScreenBottom";
 import { COLORS, icons, images, SIZES } from "../constants";
 import ScreenHeaderBtn from "../components/common/header/ScreenHeaderBtn";
+import Icons from "../components/common/icons/icons";
 
 export const unstable_settings = {
   initialRouteName: "home",
@@ -55,11 +56,11 @@ const Layout = () => {
           // ),
           headerRight: () => (
             <View style={{ flexDirection: "row" }}>
-              <ScreenHeaderBtn
+              <Icons
                 iconUrl={icons.notification}
                 dimension="100%"
                 handlePress={() => router.push("profile")}
-                marginHorizontal={SIZES.xSmall}
+                marginHorizontal={SIZES.medium}
               />
               <ScreenHeaderBtn
                 iconUrl={images.profile}

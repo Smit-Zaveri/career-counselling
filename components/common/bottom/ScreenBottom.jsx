@@ -41,9 +41,9 @@ const ScreenBottom = ({ activeScreen }) => {
         <Icons
           iconUrl={icon}
           dimension="80%"
-          handlePress={() => navigateWithAnimation(screenName)}          backgroundColor={
-            activeScreen === screenName ? "#E6E4E6" : "transparent"
-          }
+          handlePress={() => navigateWithAnimation(screenName)}
+          backgroundColor="transparent"
+          iconColor={activeScreen === screenName ? "#312651" : "#B3AEC6"}
         />
       </Animated.View>
       <Text
