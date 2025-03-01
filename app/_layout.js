@@ -16,14 +16,15 @@ const Layout = () => {
   const pathname = usePathname();
   const [previousMainScreen, setPreviousMainScreen] = useState("home");
   const currentScreen = pathname.slice(1) || "home";
-  
+
   // Define main screens and secondary screens
   const mainScreens = ["home", "job", "chat", "community", "profile"];
   const secondaryScreens = ["notification", "job-details", "search"];
 
   // Determine which screen should be active in the bottom bar
-  const activeScreen = mainScreens.includes(currentScreen) ? 
-    currentScreen : previousMainScreen;
+  const activeScreen = mainScreens.includes(currentScreen)
+    ? currentScreen
+    : previousMainScreen;
 
   // Update previous main screen when navigating between main screens
   useEffect(() => {
@@ -92,7 +93,7 @@ const Layout = () => {
         <Stack.Screen name="chat" />
         <Stack.Screen name="community" />
         <Stack.Screen name="profile" />
-        <Stack.Screen  name="notification" />
+        <Stack.Screen name="notification" />
       </Stack>
       <ScreenBottom activeScreen={activeScreen} />
     </>

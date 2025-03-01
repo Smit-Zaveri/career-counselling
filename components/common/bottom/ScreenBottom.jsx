@@ -32,10 +32,7 @@ const ScreenBottom = ({ activeScreen }) => {
     };
 
     return (
-      <TouchableOpacity
-        style={styles.buttonWrapper1}
-        onPress={handlePress}
-      >
+      <TouchableOpacity style={styles.buttonWrapper1} onPress={handlePress}>
         <Animated.View
           style={[
             {
