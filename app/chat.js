@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -13,7 +13,6 @@ import {
 import { COLORS, SIZES } from "../constants";
 import { careerGuidanceFlow } from "../utils/aiHelper";
 import { initializeChat, sendMessageToGemini } from "../utils/geminiHelper";
-// Import markdown renderer
 import Markdown from "react-native-markdown-display";
 
 const suggestedQuestions = [
@@ -28,13 +27,10 @@ const Chat = () => {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const scrollViewRef = useRef();
+  const scrollViewRef = useRef(null);
 
-  useEffect(() => {
-    startNewChat();
-  }, []);
-
-  const startNewChat = () => {
+  // Initialize a new chat session
+  const startNewChat = useCallback(() => {
     initializeChat();
     setMessages([
       {
@@ -42,54 +38,58 @@ const Chat = () => {
         isUser: false,
       },
     ]);
-  };
+  }, []);
 
-  const onRefresh = () => {
+  useEffect(() => {
+    startNewChat();
+  }, [startNewChat]);
+
+  const onRefresh = useCallback(() => {
     setRefreshing(true);
     startNewChat();
     setRefreshing(false);
-  };
+  }, [startNewChat]);
 
-  const sendMessage = async (text = input) => {
-    if (!text.trim()) return;
+  const sendMessage = useCallback(
+    async (textParam) => {
+      const messageText = textParam || input;
+      if (!messageText.trim()) return;
 
-    try {
-      setIsLoading(true);
-      setMessages((prev) => [...prev, { text, isUser: true }]);
-      setInput("");
-
-      let response;
       try {
-        response = await sendMessageToGemini(text);
+        setIsLoading(true);
+        setMessages((prev) => [...prev, { text: messageText, isUser: true }]);
+        setInput("");
 
-        if (!response.success) {
-          throw new Error(response.error || "Gemini API failed");
+        let response;
+        try {
+          response = await sendMessageToGemini(messageText);
+          if (!response.success) {
+            throw new Error(response.error || "Gemini API failed");
+          }
+        } catch (error) {
+          console.log("Gemini API failed, falling back to mock:", error);
+          response = await careerGuidanceFlow(messageText);
         }
-      } catch (error) {
-        console.log("Gemini API failed, falling back to mock:", error);
-        response = await careerGuidanceFlow(text);
-      }
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          text: response.text,
-          isUser: false,
-        },
-      ]);
-    } catch (error) {
-      console.error("Chat Error:", error);
-      setMessages((prev) => [
-        ...prev,
-        {
-          text: "Sorry, I couldn't process your request. Please try again.",
-          isUser: false,
-        },
-      ]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+        setMessages((prev) => [
+          ...prev,
+          { text: response.text, isUser: false },
+        ]);
+      } catch (error) {
+        console.error("Chat Error:", error);
+        setMessages((prev) => [
+          ...prev,
+          {
+            text: "Sorry, I couldn't process your request. Please try again.",
+            isUser: false,
+          },
+        ]);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [input]
+  );
 
   useEffect(() => {
     if (scrollViewRef.current) {
@@ -99,34 +99,40 @@ const Chat = () => {
     }
   }, [messages]);
 
-  const renderMessageContent = (message) => {
-    if (message.isUser) {
-      return <Text style={styles.userMessageText}>{message.text}</Text>;
-    } else {
+  // Memoize markdown styles to avoid recreating the object on every render
+  const markdownStyles = useMemo(
+    () => ({
+      body: styles.markdownBody,
+      heading1: styles.markdownH1,
+      heading2: styles.markdownH2,
+      heading3: styles.markdownH3,
+      paragraph: styles.markdownParagraph,
+      bullet_list: styles.markdownList,
+      ordered_list: styles.markdownList,
+      bullet_list_item: styles.markdownListItem,
+      ordered_list_item: styles.markdownListItem,
+      code_block: styles.markdownCode,
+      fence: styles.markdownCode,
+      link: styles.markdownLink,
+      strong: styles.markdownStrong,
+      em: styles.markdownEm,
+    }),
+    []
+  );
+
+  const renderMessageContent = useCallback(
+    (message) => {
+      if (message.isUser) {
+        return <Text style={styles.userMessageText}>{message.text}</Text>;
+      }
       return (
-        <Markdown
-          style={{
-            body: styles.markdownBody,
-            heading1: styles.markdownH1,
-            heading2: styles.markdownH2,
-            heading3: styles.markdownH3,
-            paragraph: styles.markdownParagraph,
-            bullet_list: styles.markdownList,
-            ordered_list: styles.markdownList,
-            bullet_list_item: styles.markdownListItem,
-            ordered_list_item: styles.markdownListItem,
-            code_block: styles.markdownCode,
-            fence: styles.markdownCode,
-            link: styles.markdownLink,
-            strong: styles.markdownStrong,
-            em: styles.markdownEm,
-          }}
-        >
+        <Markdown style={markdownStyles}>
           {message.text}
         </Markdown>
       );
-    }
-  };
+    },
+    [markdownStyles]
+  );
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.lightWhite }}>
@@ -148,7 +154,7 @@ const Chat = () => {
         >
           {messages.map((message, index) => (
             <View
-              key={index}
+              key={index.toString()}
               style={[
                 styles.messageBubble,
                 message.isUser ? styles.userMessage : styles.aiMessage,
@@ -163,13 +169,12 @@ const Chat = () => {
               <Text style={styles.loadingText}>Thinking...</Text>
             </View>
           )}
-
           {messages.length === 1 && (
             <View style={styles.suggestionsContainer}>
               <Text style={styles.suggestionsTitle}>Try asking:</Text>
               {suggestedQuestions.map((question, index) => (
                 <TouchableOpacity
-                  key={index}
+                  key={index.toString()}
                   style={styles.suggestionButton}
                   onPress={() => sendMessage(question)}
                 >
@@ -230,15 +235,10 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
     backgroundColor: COLORS.gray2,
   },
-  messageText: {
-    fontSize: SIZES.small + 2,
-    lineHeight: 20,
-  },
   userMessageText: {
     color: COLORS.white,
-  },
-  aiMessageText: {
-    color: "black",
+    fontSize: SIZES.small + 2,
+    lineHeight: 20,
   },
   inputContainer: {
     flexDirection: "row",
@@ -247,7 +247,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: COLORS.lightWhite,
-
     padding: SIZES.medium,
     borderTopWidth: 1,
     borderTopColor: COLORS.gray2,
