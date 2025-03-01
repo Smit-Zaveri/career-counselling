@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text } from "react-native";
 import { Stack, useRouter, usePathname } from "expo-router";
 import { useFonts } from "expo-font";
@@ -14,9 +14,23 @@ export const unstable_settings = {
 const Layout = () => {
   const router = useRouter();
   const pathname = usePathname();
-  const activeScreen = pathname.slice(1) || "home";
-  const pageTitle =
-    activeScreen.charAt(0).toUpperCase() + activeScreen.slice(1);
+  const [previousMainScreen, setPreviousMainScreen] = useState("home");
+  const currentScreen = pathname.slice(1) || "home";
+  
+  // Define main screens and secondary screens
+  const mainScreens = ["home", "job", "chat", "community", "profile"];
+  const secondaryScreens = ["notification", "job-details", "search"];
+
+  // Determine which screen should be active in the bottom bar
+  const activeScreen = mainScreens.includes(currentScreen) ? 
+    currentScreen : previousMainScreen;
+
+  // Update previous main screen when navigating between main screens
+  useEffect(() => {
+    if (mainScreens.includes(currentScreen)) {
+      setPreviousMainScreen(currentScreen);
+    }
+  }, [currentScreen]);
 
   const [fontsLoaded] = useFonts({
     DMBold: require("../assets/fonts/DMSans-Bold.ttf"),
@@ -44,7 +58,7 @@ const Layout = () => {
                 fontFamily: "DMBold",
               }}
             >
-              {pageTitle}
+              {currentScreen.charAt(0).toUpperCase() + currentScreen.slice(1)}
             </Text>
           ),
           // headerLeft: () => (
@@ -59,7 +73,9 @@ const Layout = () => {
               <Icons
                 iconUrl={icons.notification}
                 dimension="100%"
-                handlePress={() => router.push("notification")}
+                handlePress={() => {
+                  router.push("notification");
+                }}
                 marginHorizontal={SIZES.medium}
               />
               <ScreenHeaderBtn
