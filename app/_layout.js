@@ -59,7 +59,7 @@ const Layout = () => {
               <Icons
                 iconUrl={icons.notification}
                 dimension="100%"
-                handlePress={() => router.push("profile")}
+                handlePress={() => router.push("notification")}
                 marginHorizontal={SIZES.medium}
               />
               <ScreenHeaderBtn
@@ -76,6 +76,7 @@ const Layout = () => {
         <Stack.Screen name="chat" />
         <Stack.Screen name="community" />
         <Stack.Screen name="profile" />
+        <Stack.Screen  name="notification" />
       </Stack>
       <ScreenBottom activeScreen={activeScreen} />
     </>

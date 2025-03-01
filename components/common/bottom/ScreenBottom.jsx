@@ -24,41 +24,45 @@ const ScreenBottom = ({ activeScreen }) => {
     ]).start(() => router.push(screenName));
   };
 
-  const renderButton = (screenName, icon, label) => (
-    <TouchableOpacity
-      style={styles.buttonWrapper1}
-      onPress={() => navigateWithAnimation(screenName)}
-    >
-      <Animated.View
-        style={[
-          {
-            transform: [
-              { scale: activeScreen === screenName ? scaleValue : 1 },
-            ],
-          },
-        ]}
+  const renderButton = (screenName, icon, label) => {
+    const isActive = activeScreen === screenName;
+    const activeColor = "#312651";
+    const inactiveColor = "#B3AEC6";
+
+    return (
+      <TouchableOpacity
+        style={styles.buttonWrapper1}
+        onPress={() => navigateWithAnimation(screenName)}
       >
-        <Icons
-          iconUrl={icon}
-          dimension="80%"
-          handlePress={() => navigateWithAnimation(screenName)}
-          backgroundColor="transparent"
-          iconColor={activeScreen === screenName ? "#312651" : "#B3AEC6"}
-        />
-      </Animated.View>
-      <Text
-        style={[
-          styles.btn1Text,
-          activeScreen === screenName && {
-            color: "#312651",
-            fontFamily: "DMBold",
-          },
-        ]}
-      >
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
+        <Animated.View
+          style={[
+            {
+              transform: [{ scale: isActive ? scaleValue : 1 }],
+            },
+          ]}
+        >
+          <Icons
+            iconUrl={icon}
+            dimension="80%"
+            handlePress={() => navigateWithAnimation(screenName)}
+            backgroundColor="transparent"
+            iconColor={isActive ? activeColor : inactiveColor}
+          />
+        </Animated.View>
+        <Text
+          style={[
+            styles.btn1Text,
+            isActive && {
+              color: activeColor,
+              fontFamily: "DMBold",
+            },
+          ]}
+        >
+          {label}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <View style={styles.container}>

@@ -1,17 +1,20 @@
-import React from "react";
-import { TouchableOpacity, Image } from "react-native";
+import { Image, TouchableOpacity } from "react-native";
 
 import styles from "./icons.style";
 
-const Icons = ({ iconUrl, dimension, handlePress, backgroundColor, iconColor }) => {
+const Icons = ({ iconUrl, dimension, handlePress, marginHorizontal, iconColor, backgroundColor = "transparent" }) => {
   return (
     <TouchableOpacity
-      style={[styles.btnContainer, { backgroundColor: backgroundColor }]}
+      style={[
+        styles.btnContainer,
+        { marginRight: marginHorizontal },
+        backgroundColor && { backgroundColor }
+      ]}
       onPress={handlePress}
     >
       <Image
         source={iconUrl}
-        resizeMode="cover"
+        resizeMode='cover'
         style={[
           styles.btnImg(dimension),
           iconColor && { tintColor: iconColor }
