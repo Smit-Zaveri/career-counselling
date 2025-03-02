@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,15 +8,57 @@ import {
   Switch,
   ScrollView,
   Animated,
+  SafeAreaView,
+  Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
 import Icon from "react-native-vector-icons/Ionicons";
 import { COLORS, FONT, SIZES, SHADOWS } from "../constants";
+import { signOut } from "firebase/auth";
+import { auth, db } from "../firebase/config"; // Add db to the import
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { doc, getDoc } from "firebase/firestore";
 
 const ProfileScreen = () => {
   const router = useRouter();
   const [faceIdEnabled, setFaceIdEnabled] = useState(false);
   const scaleValue = new Animated.Value(1);
+  const [userData, setUserData] = useState(null);
+
+  useEffect(() => {
+    loadUserData();
+  }, []);
+
+  const loadUserData = async () => {
+    try {
+      const userId = auth.currentUser?.uid;
+      if (!userId) return;
+
+      // Get user data from Firestore
+      const userDoc = await getDoc(doc(db, "users", userId));
+      if (userDoc.exists()) {
+        const data = userDoc.data();
+        const userData = {
+          name: data.name,
+          email: auth.currentUser.email,
+          photoUrl: data.photoUrl,
+          createdAt: data.createdAt,
+          // Add any other fields you want to display
+        };
+
+        // Store in local storage for faster access
+        await AsyncStorage.setItem("userData", JSON.stringify(userData));
+        setUserData(userData);
+      }
+    } catch (error) {
+      console.error("Error loading user data:", error);
+      // Fallback to local storage if Firebase fetch fails
+      const storedData = await AsyncStorage.getItem("userData");
+      if (storedData) {
+        setUserData(JSON.parse(storedData));
+      }
+    }
+  };
 
   const navigateWithAnimation = (screenName) => {
     Animated.sequence([
@@ -33,13 +75,6 @@ const ProfileScreen = () => {
     ]).start(() => router.push(screenName));
   };
 
-  // Example user data
-  const user = {
-    fullName: "Itunuoluwa Abidoye",
-    handle: "@itunuoluwa",
-    avatarUrl: "https://placehold.co/100x100?text=Avatar",
-  };
-
   const onToggleFaceId = () => {
     setFaceIdEnabled(!faceIdEnabled);
   };
@@ -48,16 +83,43 @@ const ProfileScreen = () => {
     router.push("EditProfileScreen");
   };
 
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      // Clear all stored data
+      await AsyncStorage.multiRemove([
+        "user",
+        "isLoggedIn",
+        "hasCompletedQuestions",
+        "userName",
+      ]);
+      router.replace("login");
+    } catch (error) {
+      Alert.alert("Error", "Failed to logout. Please try again.");
+    }
+  };
+
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Header / User Info */}
         <View style={styles.header}>
           <View style={styles.userInfo}>
-            <Image surce={{ uri: user.avatarUrl }} style={styles.aatar} />
+            {userData?.photoUrl ? (
+              <Image
+                source={{ uri: userData.photoUrl }}
+                style={styles.avatar}
+              />
+            ) : (
+              <View style={styles.avatarPlaceholder}>
+                <Icon name="person" size={30} color={COLORS.white} />
+              </View>
+            )}
             <View style={styles.nameContainer}>
-              <Text style={styles.fullName}>{user.fullName}</Text>
-              <Text style={styles.handle}>{user.handle}</Text>
+              <Text style={styles.fullName}>
+                {userData?.name || "User Name"}
+              </Text>
+              <Text style={styles.handle}>{userData?.email || ""}</Text>
             </View>
           </View>
           <TouchableOpacity style={styles.editIcon} onPress={goToEditProfile}>
@@ -123,7 +185,15 @@ const ProfileScreen = () => {
           </TouchableOpacity>
 
           {/* Log out */}
-          <TouchableOpacity style={styles.optionRow}>
+          <TouchableOpacity
+            style={styles.optionRow}
+            onPress={() => {
+              Alert.alert("Logout", "Are you sure you want to logout?", [
+                { text: "Cancel", style: "cancel" },
+                { text: "Logout", onPress: handleLogout, style: "destructive" },
+              ]);
+            }}
+          >
             <View style={styles.optionLeft}>
               <Icon name="log-out-outline" size={24} color={COLORS.primary} />
               <Text style={styles.optionText}>Log out</Text>
@@ -160,7 +230,7 @@ const ProfileScreen = () => {
           </TouchableOpacity>
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -191,6 +261,14 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 30,
     marginRight: 12,
+  },
+  avatarPlaceholder: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: COLORS.gray2,
+    justifyContent: "center",
+    alignItems: "center",
   },
   nameContainer: {
     flexDirection: "column",

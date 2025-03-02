@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,44 +8,51 @@ import {
   SafeAreaView,
   Alert,
 } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { COLORS, FONT, SIZES } from "../constants";
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "../firebase/config";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "../firebase/config";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { doc, setDoc } from "firebase/firestore";
+import { auth, db } from "../firebase/config";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const Login = () => {
+const Register = () => {
   const router = useRouter();
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
-  const handleLogin = async () => {
-    if (!email || !password) {
+  const handleRegister = async () => {
+    if (!name || !email || !password || !confirmPassword) {
       Alert.alert("Error", "Please fill in all fields");
       return;
     }
 
+    if (password !== confirmPassword) {
+      Alert.alert("Error", "Passwords do not match");
+      return;
+    }
+
     try {
-      const userCredential = await signInWithEmailAndPassword(
+      // Create user in Firebase Auth
+      const userCredential = await createUserWithEmailAndPassword(
         auth,
         email,
         password
       );
+      const user = userCredential.user;
 
-      // Store user data
-      await AsyncStorage.setItem("user", JSON.stringify(userCredential.user));
-      await AsyncStorage.setItem("isLoggedIn", "true");
+      // Add user data to Firestore
+      await setDoc(doc(db, "users", user.uid), {
+        name,
+        email,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
 
-      // Check if user has answered questions
-      const userDoc = await getDoc(doc(db, "users", userCredential.user.uid));
-
-      if (userDoc.exists() && userDoc.data().questionsAnswered) {
-        router.replace("home");
-      } else {
-        router.replace("question");
-      }
+      Alert.alert("Success", "Account created successfully!", [
+        { text: "OK", onPress: () => router.push("login") },
+      ]);
     } catch (error) {
       Alert.alert("Error", error.message);
     }
@@ -54,10 +61,17 @@ const Login = () => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.innerContainer}>
-        <Text style={styles.title}>Welcome Back</Text>
-        <Text style={styles.subtitle}>Sign in to continue</Text>
+        <Text style={styles.title}>Create Account</Text>
+        <Text style={styles.subtitle}>Sign up to get started</Text>
 
         <View style={styles.form}>
+          <TextInput
+            style={styles.input}
+            placeholder="Full Name"
+            value={name}
+            onChangeText={setName}
+          />
+
           <TextInput
             style={styles.input}
             placeholder="Email"
@@ -75,22 +89,26 @@ const Login = () => {
             secureTextEntry
           />
 
-          <TouchableOpacity
-            style={styles.forgotPassword}
-            onPress={() => router.push("forgot-password")}
-          >
-            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-          </TouchableOpacity>
+          <TextInput
+            style={styles.input}
+            placeholder="Confirm Password"
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            secureTextEntry
+          />
 
-          <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-            <Text style={styles.loginButtonText}>Login</Text>
+          <TouchableOpacity
+            style={styles.registerButton}
+            onPress={handleRegister}
+          >
+            <Text style={styles.registerButtonText}>Register</Text>
           </TouchableOpacity>
         </View>
 
-        <View style={styles.registerContainer}>
-          <Text style={styles.registerText}>Don't have an account? </Text>
-          <TouchableOpacity onPress={() => router.push("register")}>
-            <Text style={styles.registerLink}>Register</Text>
+        <View style={styles.loginContainer}>
+          <Text style={styles.loginText}>Already have an account? </Text>
+          <TouchableOpacity onPress={() => router.push("login")}>
+            <Text style={styles.loginLink}>Login</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -131,38 +149,31 @@ const styles = StyleSheet.create({
     borderColor: COLORS.gray2,
     fontFamily: FONT.regular,
   },
-  forgotPassword: {
-    alignSelf: "flex-end",
-  },
-  forgotPasswordText: {
-    color: COLORS.tertiary,
-    fontFamily: FONT.medium,
-  },
-  loginButton: {
+  registerButton: {
     backgroundColor: COLORS.primary,
     padding: SIZES.medium,
     borderRadius: SIZES.small,
     alignItems: "center",
     marginTop: SIZES.small,
   },
-  loginButtonText: {
+  registerButtonText: {
     color: COLORS.white,
     fontFamily: FONT.bold,
     fontSize: SIZES.medium,
   },
-  registerContainer: {
+  loginContainer: {
     flexDirection: "row",
     justifyContent: "center",
     marginTop: SIZES.xLarge,
   },
-  registerText: {
+  loginText: {
     fontFamily: FONT.regular,
     color: COLORS.gray,
   },
-  registerLink: {
+  loginLink: {
     fontFamily: FONT.bold,
     color: COLORS.tertiary,
   },
 });
 
-export default Login;
+export default Register;

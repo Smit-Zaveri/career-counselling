@@ -1,11 +1,17 @@
 import React from "react";
-import { View, Text } from "react-native";
+import { SafeAreaView, ScrollView, View } from "react-native";
+import { COLORS, SIZES } from "../constants";
+import { Nearbyjobs, Popularjobs, Welcome } from "../components";
 
 const Home = () => {
   return (
-    <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-      <Text>Home Screen</Text>
-    </View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.lightWhite }}>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        <View style={{ flex: 1, padding: SIZES.medium }}>
+          <Welcome />
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
