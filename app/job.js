@@ -10,7 +10,7 @@ import {
   Welcome,
 } from "../components";
 
-const Home = () => {
+const Job = () => {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -41,4 +41,4 @@ const Home = () => {
   );
 };
 
-export default Home;
+export default Job;
