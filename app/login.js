@@ -34,12 +34,19 @@ const Login = () => {
         password
       );
 
-      // Store user data
-      await AsyncStorage.setItem("user", JSON.stringify(userCredential.user));
-      await AsyncStorage.setItem("isLoggedIn", "true");
+      // Store auth user data
+      await AsyncStorage.setItem(
+        "authUser",
+        JSON.stringify(userCredential.user)
+      );
 
-      // Check if user has answered questions
+      // Get and store Firestore user data separately
       const userDoc = await getDoc(doc(db, "users", userCredential.user.uid));
+      if (userDoc.exists()) {
+        await AsyncStorage.setItem("userData", JSON.stringify(userDoc.data()));
+      }
+
+      await AsyncStorage.setItem("isLoggedIn", "true");
 
       if (userDoc.exists() && userDoc.data().questionsAnswered) {
         router.replace("home");

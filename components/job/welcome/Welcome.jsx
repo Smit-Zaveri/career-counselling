@@ -21,13 +21,29 @@ const Welcome = ({ searchTerm, setSearchTerm, handleClick }) => {
   const [userName, setUserName] = useState("");
 
   useEffect(() => {
-    const loadUserName = async () => {
-      const storedName = await AsyncStorage.getItem("userName");
-      if (storedName) {
-        setUserName(storedName);
+    const getUserData = async () => {
+      try {
+        // Get Firestore user data
+        const userDataStr = await AsyncStorage.getItem("userData");
+        if (userDataStr) {
+          const userData = JSON.parse(userDataStr);
+          setUserName(userData.name);
+          console.log("User data from Firestore:", userData);
+        } else {
+          // Fallback to auth user
+          const authUserStr = await AsyncStorage.getItem("authUser");
+          if (authUserStr) {
+            const authUser = JSON.parse(authUserStr);
+            setUserName(authUser.email.split("@")[0]);
+          }
+        }
+      } catch (error) {
+        console.log("Error fetching user data:", error);
+        setUserName("User");
       }
     };
-    loadUserName();
+
+    getUserData();
   }, []);
 
   return (
