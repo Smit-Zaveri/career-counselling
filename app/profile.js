@@ -5,36 +5,85 @@ import {
   Image,
   TouchableOpacity,
   StyleSheet,
-  Switch,
   ScrollView,
   Animated,
   SafeAreaView,
-  Alert,
+  StatusBar,
+  Dimensions,
+  Modal,
+  TouchableWithoutFeedback,
 } from "react-native";
 import { useRouter } from "expo-router";
 import Icon from "react-native-vector-icons/Ionicons";
+import { LinearGradient } from "expo-linear-gradient";
 import { COLORS, FONT, SIZES, SHADOWS } from "../constants";
 import { signOut } from "firebase/auth";
-import { auth, db } from "../firebase/config"; // Add db to the import
+import { auth, db } from "../firebase/config";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { doc, getDoc } from "firebase/firestore";
 
+const { width } = Dimensions.get("window");
+const CARD_WIDTH = width - 32;
+
 const ProfileScreen = () => {
   const router = useRouter();
-  const [faceIdEnabled, setFaceIdEnabled] = useState(false);
-  const scaleValue = new Animated.Value(1);
   const [userData, setUserData] = useState(null);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const modalAnimation = new Animated.Value(0);
+
+  // Animations
+  const headerOpacity = new Animated.Value(0);
+  const profileScale = new Animated.Value(0.9);
+  const optionsTranslateY = new Animated.Value(50);
 
   useEffect(() => {
     loadUserData();
+    animateContent();
   }, []);
+
+  useEffect(() => {
+    if (showLogoutModal) {
+      Animated.spring(modalAnimation, {
+        toValue: 1,
+        tension: 80,
+        friction: 8,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      Animated.timing(modalAnimation, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [showLogoutModal]);
+
+  const animateContent = () => {
+    Animated.parallel([
+      Animated.timing(headerOpacity, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.spring(profileScale, {
+        toValue: 1,
+        friction: 7,
+        tension: 50,
+        useNativeDriver: true,
+      }),
+      Animated.timing(optionsTranslateY, {
+        toValue: 0,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
 
   const loadUserData = async () => {
     try {
       const userId = auth.currentUser?.uid;
       if (!userId) return;
 
-      // Get user data from Firestore
       const userDoc = await getDoc(doc(db, "users", userId));
       if (userDoc.exists()) {
         const data = userDoc.data();
@@ -43,16 +92,17 @@ const ProfileScreen = () => {
           email: auth.currentUser.email,
           photoUrl: data.photoUrl,
           createdAt: data.createdAt,
-          // Add any other fields you want to display
+          jobsApplied: data.jobsApplied || 0,
+          savedJobs: data.savedJobs || 0,
+          interviews: data.interviews || 0,
+          completedProfile: data.completedProfile || 70, // Profile completion percentage
         };
 
-        // Store in local storage for faster access
         await AsyncStorage.setItem("userData", JSON.stringify(userData));
         setUserData(userData);
       }
     } catch (error) {
       console.error("Error loading user data:", error);
-      // Fallback to local storage if Firebase fetch fails
       const storedData = await AsyncStorage.getItem("userData");
       if (storedData) {
         setUserData(JSON.parse(storedData));
@@ -60,51 +110,130 @@ const ProfileScreen = () => {
     }
   };
 
-  const navigateWithAnimation = (screenName) => {
-    Animated.sequence([
-      Animated.timing(scaleValue, {
-        toValue: 0.9,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-      Animated.timing(scaleValue, {
-        toValue: 1,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-    ]).start(() => router.push(screenName));
-  };
-
-  const onToggleFaceId = () => {
-    setFaceIdEnabled(!faceIdEnabled);
-  };
-
   const goToEditProfile = () => {
     router.push("EditProfileScreen");
   };
 
   const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      // Clear all stored data
-      await AsyncStorage.multiRemove([
-        "user",
-        "isLoggedIn",
-        "hasCompletedQuestions",
-        "userName",
-      ]);
-      router.replace("login");
-    } catch (error) {
-      Alert.alert("Error", "Failed to logout. Please try again.");
-    }
+    setShowLogoutModal(false);
+    setTimeout(async () => {
+      try {
+        await signOut(auth);
+        await AsyncStorage.multiRemove([
+          "user",
+          "isLoggedIn",
+          "hasCompletedQuestions",
+          "userData",
+        ]);
+        router.replace("login");
+      } catch (error) {
+        console.error("Error during logout:", error);
+      }
+    }, 300); // Small delay for modal animation
+  };
+
+  const formatDate = (timestamp) => {
+    if (!timestamp) return "N/A";
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
+  // Interpolate animation values
+  const modalTranslateY = modalAnimation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [300, 0],
+  });
+
+  const backdropOpacity = modalAnimation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 0.5],
+  });
+
+  // Custom Logout Modal Component
+  const LogoutModal = () => {
+    return (
+      <Modal
+        transparent={true}
+        visible={showLogoutModal}
+        animationType="none"
+        onRequestClose={() => setShowLogoutModal(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setShowLogoutModal(false)}>
+          <Animated.View
+            style={[styles.modalBackdrop, { opacity: backdropOpacity }]}
+          />
+        </TouchableWithoutFeedback>
+
+        <Animated.View
+          style={[
+            styles.modalContainer,
+            { transform: [{ translateY: modalTranslateY }] },
+          ]}
+        >
+          <View style={styles.modalHandle} />
+
+          <View style={styles.modalContent}>
+            <View style={styles.logoutIconContainer}>
+              <Icon name="log-out-outline" size={32} color={COLORS.white} />
+            </View>
+            <Text style={styles.logoutHeaderText}>Logout</Text>
+            <Text style={styles.logoutDescriptionText}>
+              Are you sure you want to logout from your account?
+            </Text>
+
+            <View style={styles.logoutButtonsContainer}>
+              <TouchableOpacity
+                style={[styles.logoutButton, styles.cancelButton]}
+                activeOpacity={0.7}
+                onPress={() => setShowLogoutModal(false)}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.logoutButton, styles.confirmButton]}
+                activeOpacity={0.7}
+                onPress={handleLogout}
+              >
+                <Text style={styles.confirmButtonText}>Yes, Logout</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Animated.View>
+      </Modal>
+    );
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Header / User Info */}
-        <View style={styles.header}>
-          <View style={styles.userInfo}>
+      <StatusBar barStyle="light-content" />
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Animated Header with Gradient */}
+        <Animated.View
+          style={[styles.headerContainer, { opacity: headerOpacity }]}
+        >
+          <LinearGradient
+            colors={[COLORS.primary, "#396AFC"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.header}
+          >
+            <Text style={styles.headerTitle}>My Profile</Text>
+          </LinearGradient>
+        </Animated.View>
+
+        {/* Profile Card */}
+        <Animated.View
+          style={[styles.profileCard, { transform: [{ scale: profileScale }] }]}
+        >
+          <View style={styles.profileImageSection}>
             {userData?.photoUrl ? (
               <Image
                 source={{ uri: userData.photoUrl }}
@@ -112,124 +241,185 @@ const ProfileScreen = () => {
               />
             ) : (
               <View style={styles.avatarPlaceholder}>
-                <Icon name="person" size={30} color={COLORS.white} />
+                <Icon name="person" size={40} color={COLORS.white} />
               </View>
             )}
-            <View style={styles.nameContainer}>
-              <Text style={styles.fullName}>
-                {userData?.name || "User Name"}
+            <TouchableOpacity
+              style={styles.editButton}
+              onPress={goToEditProfile}
+            >
+              <Icon name="pencil" size={16} color={COLORS.white} />
+            </TouchableOpacity>
+          </View>
+
+          <Text style={styles.fullName}>{userData?.name || "User Name"}</Text>
+          <Text style={styles.email}>{userData?.email || ""}</Text>
+
+          <Text style={styles.memberSince}>
+            Member since{" "}
+            {userData?.createdAt ? formatDate(userData.createdAt) : "N/A"}
+          </Text>
+
+          {/* Profile Completion */}
+          <View style={styles.completionContainer}>
+            <View style={styles.completionTextContainer}>
+              <Text style={styles.completionText}>Profile Completion</Text>
+              <Text style={styles.completionPercentage}>
+                {userData?.completedProfile || 70}%
               </Text>
-              <Text style={styles.handle}>{userData?.email || ""}</Text>
+            </View>
+            <View style={styles.progressBarBackground}>
+              <View
+                style={[
+                  styles.progressBar,
+                  { width: `${userData?.completedProfile || 70}%` },
+                ]}
+              />
             </View>
           </View>
-          <TouchableOpacity style={styles.editIcon} onPress={goToEditProfile}>
-            <Icon name="pencil" size={20} color={COLORS.white} />
-          </TouchableOpacity>
-        </View>
 
-        {/* Profile Options */}
-        <View style={styles.optionsContainer}>
+          <View style={styles.statsContainer}>
+            <View style={styles.statItem}>
+              <View
+                style={[
+                  styles.statIconCircle,
+                  { backgroundColor: "rgba(90, 24, 154, 0.1)" },
+                ]}
+              >
+                <Icon name="briefcase-outline" size={18} color="#5A189A" />
+              </View>
+              <Text style={styles.statNumber}>
+                {userData?.jobsApplied || 0}
+              </Text>
+              <Text style={styles.statLabel}>Jobs Applied</Text>
+            </View>
+
+            <View style={styles.verticalDivider}></View>
+
+            <View style={styles.statItem}>
+              <View
+                style={[
+                  styles.statIconCircle,
+                  { backgroundColor: "rgba(0, 119, 182, 0.1)" },
+                ]}
+              >
+                <Icon name="bookmark-outline" size={18} color="#0077B6" />
+              </View>
+              <Text style={styles.statNumber}>{userData?.savedJobs || 0}</Text>
+              <Text style={styles.statLabel}>Saved Jobs</Text>
+            </View>
+
+            <View style={styles.verticalDivider}></View>
+
+            <View style={styles.statItem}>
+              <View
+                style={[
+                  styles.statIconCircle,
+                  { backgroundColor: "rgba(39, 174, 96, 0.1)" },
+                ]}
+              >
+                <Icon name="calendar-outline" size={18} color="#27AE60" />
+              </View>
+              <Text style={styles.statNumber}>{userData?.interviews || 0}</Text>
+              <Text style={styles.statLabel}>Interviews</Text>
+            </View>
+          </View>
+        </Animated.View>
+
+        {/* Options */}
+        <Animated.View
+          style={[
+            styles.optionsContainer,
+            { transform: [{ translateY: optionsTranslateY }] },
+          ]}
+        >
           {/* My Account */}
-          <TouchableOpacity style={styles.optionRow}>
+          <TouchableOpacity
+            style={styles.optionRow}
+            activeOpacity={0.7}
+            onPress={() => router.push("account")}
+          >
             <View style={styles.optionLeft}>
-              <Icon
-                name="person-circle-outline"
-                size={24}
-                color={COLORS.primary}
-              />
+              <View
+                style={[styles.iconBackground, { backgroundColor: "#6C63FF" }]}
+              >
+                <Icon
+                  name="person-circle-outline"
+                  size={22}
+                  color={COLORS.white}
+                />
+              </View>
               <Text style={styles.optionText}>My Account</Text>
             </View>
-            {/* Alert icon if needed */}
-            <Icon name="alert-circle" size={20} color="red" />
+            <View style={styles.arrowContainer}>
+              <Icon name="chevron-forward" size={18} color={COLORS.white} />
+            </View>
           </TouchableOpacity>
 
-          {/* Saved Beneficiary */}
-          <TouchableOpacity style={styles.optionRow}>
+          {/* Activity History */}
+          <TouchableOpacity
+            style={styles.optionRow}
+            activeOpacity={0.7}
+            onPress={() => router.push("history")}
+          >
             <View style={styles.optionLeft}>
-              <Icon name="people-outline" size={24} color={COLORS.primary} />
-              <Text style={styles.optionText}>Saved Beneficiary</Text>
+              <View
+                style={[styles.iconBackground, { backgroundColor: "#47B5FF" }]}
+              >
+                <Icon name="time-outline" size={22} color={COLORS.white} />
+              </View>
+              <Text style={styles.optionText}>Activity History</Text>
             </View>
-            <Icon name="chevron-forward" size={20} color={COLORS.gray} />
+            <View style={styles.arrowContainer}>
+              <Icon name="chevron-forward" size={18} color={COLORS.white} />
+            </View>
           </TouchableOpacity>
 
-          {/* Face ID / Touch ID */}
-          <View style={styles.optionRow}>
+          {/* Settings */}
+          <TouchableOpacity
+            style={styles.optionRow}
+            activeOpacity={0.7}
+            onPress={() => router.push("settings")}
+          >
             <View style={styles.optionLeft}>
-              <Icon
-                name="finger-print-outline"
-                size={24}
-                color={COLORS.primary}
-              />
-              <Text style={styles.optionText}>Face ID / Touch ID</Text>
+              <View
+                style={[styles.iconBackground, { backgroundColor: "#38E54D" }]}
+              >
+                <Icon name="settings-outline" size={22} color={COLORS.white} />
+              </View>
+              <Text style={styles.optionText}>Settings</Text>
             </View>
-            <Switch
-              trackColor={{ false: "#767577", true: COLORS.primary }}
-              thumbColor={faceIdEnabled ? COLORS.white : "#f4f3f4"}
-              ios_backgroundColor="#3e3e3e"
-              onValueChange={onToggleFaceId}
-              value={faceIdEnabled}
-            />
-          </View>
-
-          {/* Two-Factor Authentication */}
-          <TouchableOpacity style={styles.optionRow}>
-            <View style={styles.optionLeft}>
-              <Icon
-                name="shield-checkmark-outline"
-                size={24}
-                color={COLORS.primary}
-              />
-              <Text style={styles.optionText}>Two-Factor Authentication</Text>
+            <View style={styles.arrowContainer}>
+              <Icon name="chevron-forward" size={18} color={COLORS.white} />
             </View>
-            <Icon name="chevron-forward" size={20} color={COLORS.gray} />
           </TouchableOpacity>
 
           {/* Log out */}
           <TouchableOpacity
-            style={styles.optionRow}
-            onPress={() => {
-              Alert.alert("Logout", "Are you sure you want to logout?", [
-                { text: "Cancel", style: "cancel" },
-                { text: "Logout", onPress: handleLogout, style: "destructive" },
-              ]);
-            }}
+            style={[styles.optionRow, styles.logoutRow]}
+            activeOpacity={0.7}
+            onPress={() => setShowLogoutModal(true)}
           >
             <View style={styles.optionLeft}>
-              <Icon name="log-out-outline" size={24} color={COLORS.primary} />
-              <Text style={styles.optionText}>Log out</Text>
+              <View
+                style={[styles.iconBackground, { backgroundColor: "#FF6464" }]}
+              >
+                <Icon name="log-out-outline" size={22} color={COLORS.white} />
+              </View>
+              <Text style={[styles.optionText, styles.logoutText]}>
+                Log out
+              </Text>
             </View>
-            <Icon name="chevron-forward" size={20} color={COLORS.gray} />
           </TouchableOpacity>
-        </View>
+        </Animated.View>
 
-        {/* More Section */}
-        <View style={styles.moreContainer}>
-          <Text style={styles.moreHeading}>More</Text>
-          <TouchableOpacity style={styles.optionRow}>
-            <View style={styles.optionLeft}>
-              <Icon
-                name="help-circle-outline"
-                size={24}
-                color={COLORS.primary}
-              />
-              <Text style={styles.optionText}>Help & Support</Text>
-            </View>
-            <Icon name="chevron-forward" size={20} color={COLORS.gray} />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.optionRow}>
-            <View style={styles.optionLeft}>
-              <Icon
-                name="information-circle-outline"
-                size={24}
-                color={COLORS.primary}
-              />
-              <Text style={styles.optionText}>About App</Text>
-            </View>
-            <Icon name="chevron-forward" size={20} color={COLORS.gray} />
-          </TouchableOpacity>
+        <View style={styles.footer}>
+          <Text style={styles.versionText}>Version 1.0.0</Text>
         </View>
       </ScrollView>
+
+      {/* Render the logout modal */}
+      <LogoutModal />
     </SafeAreaView>
   );
 };
@@ -244,89 +434,314 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 40,
   },
-  header: {
-    backgroundColor: COLORS.primary, // or your preferred color
-    paddingHorizontal: 16,
-    paddingVertical: 20,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+  headerContainer: {
+    overflow: "hidden",
+    borderBottomLeftRadius: 25,
+    borderBottomRightRadius: 25,
+    ...SHADOWS.medium,
   },
-  userInfo: {
-    flexDirection: "row",
+  header: {
+    paddingHorizontal: 20,
+    paddingTop: 30,
+    paddingBottom: 60,
     alignItems: "center",
+    borderBottomLeftRadius: 25,
+    borderBottomRightRadius: 25,
+  },
+  headerTitle: {
+    color: COLORS.white,
+    fontFamily: FONT.bold,
+    fontSize: SIZES.xLarge,
+    marginTop: 10,
+  },
+  profileCard: {
+    alignItems: "center",
+    backgroundColor: COLORS.white,
+    marginHorizontal: 16,
+    marginTop: -40,
+    borderRadius: 20,
+    paddingVertical: 25,
+    paddingHorizontal: 20,
+    ...SHADOWS.medium,
+    elevation: 8,
+    shadowColor: COLORS.primary,
+  },
+  profileImageSection: {
+    position: "relative",
+    marginBottom: 15,
   },
   avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    marginRight: 12,
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    borderWidth: 4,
+    borderColor: COLORS.white,
   },
   avatarPlaceholder: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 110,
+    height: 110,
+    borderRadius: 55,
     backgroundColor: COLORS.gray2,
     justifyContent: "center",
     alignItems: "center",
+    borderWidth: 4,
+    borderColor: COLORS.white,
   },
-  nameContainer: {
-    flexDirection: "column",
+  editButton: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    backgroundColor: COLORS.primary,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 3,
+    borderColor: COLORS.white,
+    ...SHADOWS.small,
   },
   fullName: {
-    color: COLORS.white,
     fontFamily: FONT.bold,
-    fontSize: SIZES.medium,
-    marginBottom: 2,
+    fontSize: SIZES.large + 2,
+    color: COLORS.primary,
+    marginTop: 8,
   },
-  handle: {
-    color: COLORS.white,
+  email: {
+    fontFamily: FONT.regular,
+    fontSize: SIZES.small + 2,
+    color: COLORS.gray,
+    marginTop: 5,
+  },
+  memberSince: {
+    fontFamily: FONT.medium,
+    fontSize: SIZES.small,
+    color: COLORS.secondary,
+    marginTop: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: "rgba(0, 0, 0, 0.05)",
+    borderRadius: 12,
+  },
+  completionContainer: {
+    width: "100%",
+    marginTop: 20,
+    paddingHorizontal: 5,
+  },
+  completionTextContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  completionText: {
+    fontFamily: FONT.medium,
+    fontSize: SIZES.small + 2,
+    color: COLORS.primary,
+  },
+  completionPercentage: {
+    fontFamily: FONT.bold,
+    fontSize: SIZES.small + 2,
+    color: COLORS.primary,
+  },
+  progressBarBackground: {
+    height: 8,
+    backgroundColor: "rgba(0, 0, 0, 0.1)",
+    borderRadius: 4,
+    overflow: "hidden",
+  },
+  progressBar: {
+    height: 8,
+    backgroundColor: COLORS.primary,
+    borderRadius: 4,
+  },
+  statsContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
+    marginTop: 25,
+    paddingVertical: 20,
+    paddingHorizontal: 10,
+    backgroundColor: "rgba(0, 0, 0, 0.02)",
+    borderRadius: 16,
+  },
+  statItem: {
+    alignItems: "center",
+    flex: 1,
+  },
+  statIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  verticalDivider: {
+    width: 1,
+    height: "80%",
+    backgroundColor: "rgba(0, 0, 0, 0.1)",
+  },
+  statNumber: {
+    fontFamily: FONT.bold,
+    fontSize: SIZES.large,
+    color: COLORS.primary,
+  },
+  statLabel: {
     fontFamily: FONT.regular,
     fontSize: SIZES.small,
-  },
-  editIcon: {
-    padding: 6,
+    color: COLORS.gray,
+    marginTop: 5,
   },
   optionsContainer: {
-    marginTop: 10,
+    marginTop: 25,
     backgroundColor: COLORS.white,
-    ...SHADOWS.medium,
-    borderRadius: 8,
+    borderRadius: 20,
     marginHorizontal: 16,
-    padding: 8,
+    padding: 15,
+    ...SHADOWS.medium,
+    shadowColor: "#000",
   },
   optionRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: 12,
-    paddingHorizontal: 4,
+    paddingVertical: 16,
+    paddingHorizontal: 10,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.gray2,
+    borderBottomColor: "rgba(0, 0, 0, 0.05)",
+  },
+  logoutRow: {
+    borderBottomWidth: 0,
+    marginTop: 5,
   },
   optionLeft: {
     flexDirection: "row",
     alignItems: "center",
   },
+  iconBackground: {
+    width: 45,
+    height: 45,
+    borderRadius: 15,
+    backgroundColor: COLORS.primary,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 15,
+    ...SHADOWS.small,
+  },
   optionText: {
-    marginLeft: 8,
-    fontSize: SIZES.medium,
-    fontFamily: FONT.regular,
+    fontSize: SIZES.medium + 1,
+    fontFamily: FONT.medium,
     color: COLORS.primary,
   },
-  moreContainer: {
-    marginTop: 20,
-    backgroundColor: COLORS.white,
-    ...SHADOWS.medium,
-    borderRadius: 8,
-    marginHorizontal: 16,
-    padding: 8,
-  },
-  moreHeading: {
-    fontSize: SIZES.medium,
+  logoutText: {
+    color: "#FF6464",
     fontFamily: FONT.bold,
+  },
+  arrowContainer: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: "rgba(0, 0, 0, 0.1)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  footer: {
+    marginTop: 30,
+    alignItems: "center",
+    paddingBottom: 10,
+  },
+  versionText: {
+    fontFamily: FONT.regular,
+    fontSize: SIZES.small,
+    color: COLORS.gray,
+  },
+  // Modal styles
+  modalBackdrop: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "#000",
+  },
+  modalContainer: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: COLORS.white,
+    borderTopLeftRadius: 25,
+    borderTopRightRadius: 25,
+    paddingTop: 12,
+    paddingBottom: 40,
+    paddingHorizontal: 20,
+    ...SHADOWS.medium,
+  },
+  modalHandle: {
+    width: 40,
+    height: 5,
+    backgroundColor: "#e0e0e0",
+    borderRadius: 3,
+    alignSelf: "center",
+    marginBottom: 20,
+  },
+  modalContent: {
+    alignItems: "center",
+    paddingVertical: 15,
+  },
+  logoutIconContainer: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: "#FF6464",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 20,
+    ...SHADOWS.small,
+  },
+  logoutHeaderText: {
+    fontFamily: FONT.bold,
+    fontSize: SIZES.large + 4,
     color: COLORS.primary,
-    marginBottom: 10,
-    marginLeft: 4,
+    marginBottom: 15,
+  },
+  logoutDescriptionText: {
+    fontFamily: FONT.regular,
+    fontSize: SIZES.medium,
+    color: COLORS.gray,
+    textAlign: "center",
+    marginBottom: 30,
+    paddingHorizontal: 10,
+  },
+  logoutButtonsContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
+    paddingHorizontal: 10,
+  },
+  logoutButton: {
+    flex: 1,
+    borderRadius: 12,
+    paddingVertical: 15,
+    alignItems: "center",
+    justifyContent: "center",
+    marginHorizontal: 8,
+    ...SHADOWS.small,
+  },
+  cancelButton: {
+    backgroundColor: "rgb(225, 225, 225)",
+  },
+  confirmButton: {
+    backgroundColor: "#FF6464",
+  },
+  cancelButtonText: {
+    fontFamily: FONT.medium,
+    fontSize: SIZES.medium,
+    color: COLORS.primary,
+  },
+  confirmButtonText: {
+    fontFamily: FONT.medium,
+    fontSize: SIZES.medium,
+    color: COLORS.white,
   },
 });
