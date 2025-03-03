@@ -8,6 +8,7 @@ import ScreenHeaderBtn from "../components/common/header/ScreenHeaderBtn";
 import Icons from "../components/common/icons/icons";
 import { AuthProvider } from "../context/AuthContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import ExitConfirmationPopup from "../components/common/popup/ExitConfirmationPopup";
 
 export const unstable_settings = {
   initialRouteName: "home",
@@ -20,6 +21,8 @@ const Layout = () => {
   const currentScreen = pathname?.slice(1) || "home";
   const [userProfilePic, setUserProfilePic] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [showExitPopup, setShowExitPopup] = useState(false);
+  const [navigationHistory, setNavigationHistory] = useState(["home"]);
 
   // Define screens that don't require authentication
   const publicScreens = [
@@ -32,6 +35,13 @@ const Layout = () => {
 
   // All other screens require authentication
   const isProtectedRoute = !publicScreens.includes(currentScreen);
+
+  // Update navigation history when path changes
+  useEffect(() => {
+    if (currentScreen && currentScreen !== navigationHistory[0]) {
+      setNavigationHistory((prev) => [currentScreen, ...prev]);
+    }
+  }, [pathname]);
 
   useEffect(() => {
     const checkAuthStatus = async () => {
@@ -61,6 +71,24 @@ const Layout = () => {
           router.replace("login");
           return true;
         }
+
+        // If on home screen, show exit confirmation popup
+        if (currentScreen === "home") {
+          setShowExitPopup(true);
+          return true;
+        }
+        // If on any other screen, navigate back
+        else {
+          if (navigationHistory.length > 1) {
+            // Navigate to the previous screen in history
+            const newHistory = [...navigationHistory];
+            newHistory.shift(); // Remove current screen
+            const previousScreen = newHistory[0];
+            setNavigationHistory(newHistory);
+            router.replace(previousScreen);
+            return true;
+          }
+        }
         return false;
       }
     );
@@ -68,7 +96,7 @@ const Layout = () => {
     return () => {
       backHandler.remove();
     };
-  }, [pathname, isAuthenticated]);
+  }, [pathname, isAuthenticated, navigationHistory, currentScreen]);
 
   useEffect(() => {
     loadProfilePic();
@@ -116,6 +144,16 @@ const Layout = () => {
     } else {
       router.push(screenName);
     }
+  };
+
+  // Handle exit confirmation
+  const handleExitCancel = () => {
+    setShowExitPopup(false);
+  };
+
+  const handleExitConfirm = () => {
+    setShowExitPopup(false);
+    BackHandler.exitApp();
   };
 
   // Right header component
@@ -276,6 +314,12 @@ const Layout = () => {
       {!shouldHideNavigation() && isAuthenticated && (
         <ScreenBottom activeScreen={activeScreen} />
       )}
+
+      <ExitConfirmationPopup
+        visible={showExitPopup}
+        onCancel={handleExitCancel}
+        onConfirm={handleExitConfirm}
+      />
     </AuthProvider>
   );
 };

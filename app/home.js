@@ -208,7 +208,6 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.1,
     shadowRadius: 2.62,
-    elevation: 4,
   },
   floatingHeaderTitle: {
     fontFamily: FONT.bold,

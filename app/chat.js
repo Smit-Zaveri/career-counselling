@@ -1,4 +1,10 @@
-import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import React, {
+  useState,
+  useRef,
+  useEffect,
+  useCallback,
+  useMemo,
+} from "react";
 import {
   View,
   Text,
@@ -125,11 +131,7 @@ const Chat = () => {
       if (message.isUser) {
         return <Text style={styles.userMessageText}>{message.text}</Text>;
       }
-      return (
-        <Markdown style={markdownStyles}>
-          {message.text}
-        </Markdown>
-      );
+      return <Markdown style={markdownStyles}>{message.text}</Markdown>;
     },
     [markdownStyles]
   );

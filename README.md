@@ -29,7 +29,7 @@
 
 ## 🚨 Tutorial
 
-This repository contains the code corresponding to an in-depth tutorial available on our YouTube channel, <a href="https://www.youtube.com/@javascriptmastery/videos" target="_blank"><b>JavaScript Mastery</b></a>. 
+This repository contains the code corresponding to an in-depth tutorial available on our YouTube channel, <a href="https://www.youtube.com/@javascriptmastery/videos" target="_blank"><b>JavaScript Mastery</b></a>.
 
 If you prefer visual learning, this is the perfect resource for you. Follow our tutorial to learn how to build projects like these step-by-step in a beginner-friendly manner!
 
@@ -67,13 +67,13 @@ If you're getting started and need assistance or face any bugs, join our active 
 
 👉 **Detailed Job Insights**: View comprehensive job details, including application links, salary info, responsibilities, and qualifications.
 
-👉 **Tailored Job Exploration**: Find jobs specific to a particular title 
+👉 **Tailored Job Exploration**: Find jobs specific to a particular title
 
-👉 **Robust Loading and Error Management**: Ensure effective handling of loading processes and error scenarios. 
+👉 **Robust Loading and Error Management**: Ensure effective handling of loading processes and error scenarios.
 
 👉 **Optimized for All Devices**: A responsive design for a seamless user experience across various devices.
 
-and many more, including code architecture and reusability 
+and many more, including code architecture and reusability
 
 ## <a name="quick-start">🤸 Quick Start</a>
 
@@ -126,143 +126,150 @@ Open [http://localhost:3000](http://localhost:3000) in your browser to view the 
 <summary><code>Search.js</code></summary>
 
 ```javascript
-import React, { useEffect, useState } from 'react'
-import { ActivityIndicator, FlatList, Image, TouchableOpacity, View } from 'react-native'
-import { Stack, useRouter, useSearchParams } from 'expo-router'
-import { Text, SafeAreaView } from 'react-native'
-import axios from 'axios'
+import React, { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  FlatList,
+  Image,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { Stack, useRouter, useSearchParams } from "expo-router";
+import { Text, SafeAreaView } from "react-native";
+import axios from "axios";
 
-import { ScreenHeaderBtn, NearbyJobCard } from '../../components'
-import { COLORS, icons, SIZES } from '../../constants'
-import styles from '../../styles/search'
+import { ScreenHeaderBtn, NearbyJobCard } from "../../components";
+import { COLORS, icons, SIZES } from "../../constants";
+import styles from "../../styles/search";
 
 const JobSearch = () => {
-    const params = useSearchParams();
-    const router = useRouter()
+  const params = useSearchParams();
+  const router = useRouter();
 
-    const [searchResult, setSearchResult] = useState([]);
-    const [searchLoader, setSearchLoader] = useState(false);
-    const [searchError, setSearchError] = useState(null);
-    const [page, setPage] = useState(1);
+  const [searchResult, setSearchResult] = useState([]);
+  const [searchLoader, setSearchLoader] = useState(false);
+  const [searchError, setSearchError] = useState(null);
+  const [page, setPage] = useState(1);
 
-    const handleSearch = async () => {
-        setSearchLoader(true);
-        setSearchResult([])
+  const handleSearch = async () => {
+    setSearchLoader(true);
+    setSearchResult([]);
 
-        try {
-            const options = {
-                method: "GET",
-                url: `https://jsearch.p.rapidapi.com/search`,
-                headers: {
-                    "X-RapidAPI-Key": '',
-                    "X-RapidAPI-Host": "jsearch.p.rapidapi.com",
-                },
-                params: {
-                    query: params.id,
-                    page: page.toString(),
-                },
-            };
+    try {
+      const options = {
+        method: "GET",
+        url: `https://jsearch.p.rapidapi.com/search`,
+        headers: {
+          "X-RapidAPI-Key": "",
+          "X-RapidAPI-Host": "jsearch.p.rapidapi.com",
+        },
+        params: {
+          query: params.id,
+          page: page.toString(),
+        },
+      };
 
-            const response = await axios.request(options);
-            setSearchResult(response.data.data);
-        } catch (error) {
-            setSearchError(error);
-            console.log(error);
-        } finally {
-            setSearchLoader(false);
-        }
-    };
-
-    const handlePagination = (direction) => {
-        if (direction === 'left' && page > 1) {
-            setPage(page - 1)
-            handleSearch()
-        } else if (direction === 'right') {
-            setPage(page + 1)
-            handleSearch()
-        }
+      const response = await axios.request(options);
+      setSearchResult(response.data.data);
+    } catch (error) {
+      setSearchError(error);
+      console.log(error);
+    } finally {
+      setSearchLoader(false);
     }
+  };
 
-    useEffect(() => {
-        handleSearch()
-    }, [])
+  const handlePagination = (direction) => {
+    if (direction === "left" && page > 1) {
+      setPage(page - 1);
+      handleSearch();
+    } else if (direction === "right") {
+      setPage(page + 1);
+      handleSearch();
+    }
+  };
 
-    return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.lightWhite }}>
-            <Stack.Screen
-                options={{
-                    headerStyle: { backgroundColor: COLORS.lightWhite },
-                    headerShadowVisible: false,
-                    headerLeft: () => (
-                        <ScreenHeaderBtn
-                            iconUrl={icons.left}
-                            dimension='60%'
-                            handlePress={() => router.back()}
-                        />
-                    ),
-                    headerTitle: "",
-                }}
+  useEffect(() => {
+    handleSearch();
+  }, []);
+
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.lightWhite }}>
+      <Stack.Screen
+        options={{
+          headerStyle: { backgroundColor: COLORS.lightWhite },
+          headerShadowVisible: false,
+          headerLeft: () => (
+            <ScreenHeaderBtn
+              iconUrl={icons.left}
+              dimension="60%"
+              handlePress={() => router.back()}
             />
+          ),
+          headerTitle: "",
+        }}
+      />
 
-            <FlatList
-                data={searchResult}
-                renderItem={({ item }) => (
-                    <NearbyJobCard
-                        job={item}
-                        handleNavigate={() => router.push(`/job-details/${item.job_id}`)}
-                    />
-                )}
-                keyExtractor={(item) => item.job_id}
-                contentContainerStyle={{ padding: SIZES.medium, rowGap: SIZES.medium }}
-                ListHeaderComponent={() => (
-                    <>
-                        <View style={styles.container}>
-                            <Text style={styles.searchTitle}>{params.id}</Text>
-                            <Text style={styles.noOfSearchedJobs}>Job Opportunities</Text>
-                        </View>
-                        <View style={styles.loaderContainer}>
-                            {searchLoader ? (
-                                <ActivityIndicator size='large' color={COLORS.primary} />
-                            ) : searchError && (
-                                <Text>Oops something went wrong</Text>
-                            )}
-                        </View>
-                    </>
-                )}
-                ListFooterComponent={() => (
-                    <View style={styles.footerContainer}>
-                        <TouchableOpacity
-                            style={styles.paginationButton}
-                            onPress={() => handlePagination('left')}
-                        >
-                            <Image
-                                source={icons.chevronLeft}
-                                style={styles.paginationImage}
-                                resizeMode="contain"
-                            />
-                        </TouchableOpacity>
-                        <View style={styles.paginationTextBox}>
-                            <Text style={styles.paginationText}>{page}</Text>
-                        </View>
-                        <TouchableOpacity
-                            style={styles.paginationButton}
-                            onPress={() => handlePagination('right')}
-                        >
-                            <Image
-                                source={icons.chevronRight}
-                                style={styles.paginationImage}
-                                resizeMode="contain"
-                            />
-                        </TouchableOpacity>
-                    </View>
-                )}
-            />
-        </SafeAreaView>
-    )
-}
+      <FlatList
+        data={searchResult}
+        renderItem={({ item }) => (
+          <NearbyJobCard
+            job={item}
+            handleNavigate={() => router.push(`/job-details/${item.job_id}`)}
+          />
+        )}
+        keyExtractor={(item) => item.job_id}
+        contentContainerStyle={{ padding: SIZES.medium, rowGap: SIZES.medium }}
+        ListHeaderComponent={() => (
+          <>
+            <View style={styles.container}>
+              <Text style={styles.searchTitle}>{params.id}</Text>
+              <Text style={styles.noOfSearchedJobs}>Job Opportunities</Text>
+            </View>
+            <View style={styles.loaderContainer}>
+              {searchLoader ? (
+                <ActivityIndicator size="large" color={COLORS.primary} />
+              ) : (
+                searchError && <Text>Oops something went wrong</Text>
+              )}
+            </View>
+          </>
+        )}
+        ListFooterComponent={() => (
+          <View style={styles.footerContainer}>
+            <TouchableOpacity
+              style={styles.paginationButton}
+              onPress={() => handlePagination("left")}
+            >
+              <Image
+                source={icons.chevronLeft}
+                style={styles.paginationImage}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
+            <View style={styles.paginationTextBox}>
+              <Text style={styles.paginationText}>{page}</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.paginationButton}
+              onPress={() => handlePagination("right")}
+            >
+              <Image
+                source={icons.chevronRight}
+                style={styles.paginationImage}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
+          </View>
+        )}
+      />
+    </SafeAreaView>
+  );
+};
 
-export default JobSearch
+export default JobSearch;
 ```
+
 </details>
 
 ## <a name="links">🔗 Links</a>

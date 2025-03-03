@@ -60,7 +60,6 @@ try {
 const communityRef = (communityId) =>
   collection(db, `communities/${communityId}/messages`);
 
-
 export const subscribeToMessages = (communityId, callback) => {
   const q = query(communityRef(communityId), orderBy("createdAt", "desc"));
 
