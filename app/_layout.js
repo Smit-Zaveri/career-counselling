@@ -148,8 +148,8 @@ const Layout = () => {
           }}
         />
         <Stack.Screen name="job" options={defaultScreenOptions} />
-        <Stack.Screen name="chat" options={defaultScreenOptions} />
         <Stack.Screen name="community" options={defaultScreenOptions} />
+        <Stack.Screen name="chat" options={defaultScreenOptions} />
         <Stack.Screen name="profile" options={defaultScreenOptions} />
         <Stack.Screen name="notification" options={defaultScreenOptions} />
         <Stack.Screen name="register" options={{ headerShown: false }} />

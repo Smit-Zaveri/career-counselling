@@ -6,7 +6,7 @@ import { Nearbyjobs, Popularjobs, Welcome } from "../components";
 const Home = () => {
   return (
     <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-      <Text>Home Screen</Text>
+      <Text>Smit Screen</Text>
     </View>
   );
 };
