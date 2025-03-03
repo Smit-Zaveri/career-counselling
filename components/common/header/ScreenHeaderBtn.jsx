@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Image, TouchableOpacity, View } from "react-native";
+import { Image, TouchableOpacity, View, Text } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Icon from "react-native-vector-icons/Ionicons";
 import styles from "./screenheader.style";
@@ -10,6 +10,7 @@ const ScreenHeaderBtn = ({
   dimension,
   handlePress,
   marginHorizontal,
+  badgeCount,
 }) => {
   const [profilePhoto, setProfilePhoto] = useState(null);
 
@@ -57,6 +58,13 @@ const ScreenHeaderBtn = ({
           resizeMode="cover"
           style={styles.btnImg(dimension)}
         />
+      )}
+
+      {/* Badge for saved jobs count */}
+      {badgeCount > 0 && (
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>{badgeCount}</Text>
+        </View>
       )}
     </TouchableOpacity>
   );

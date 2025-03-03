@@ -3,6 +3,18 @@ import {
   getFirestore,
   initializeFirestore,
   CACHE_SIZE_UNLIMITED,
+  collection,
+  query,
+  orderBy,
+  onSnapshot,
+  doc,
+  getDoc,
+  updateDoc,
+  arrayUnion,
+  arrayRemove,
+  getDocs,
+  where,
+  limit,
 } from "firebase/firestore";
 import {
   getAuth,
@@ -34,7 +46,6 @@ if (Platform.OS !== "web") {
       persistence: getReactNativePersistence(AsyncStorage),
     });
   } catch (error) {
-    // If auth is already initialized, get the existing instance
     auth = getAuth(app);
     console.log("Using existing auth instance");
   }
@@ -56,20 +67,126 @@ try {
   }
 }
 
-// Helper functions for community chat
-const communityRef = (communityId) =>
+// Helper functions for job features with additional error handling
+const safeDbOperation = async (operation, fallback = null) => {
+  try {
+    if (!db) {
+      throw new Error("Firestore not initialized");
+    }
+    return await operation();
+  } catch (error) {
+    console.error("Database operation failed:", error);
+    return fallback;
+  }
+};
+
+const getJobsRef = () => {
+  if (!db) throw new Error("Firestore not initialized");
+  return collection(db, "jobs");
+};
+
+export const getJobById = async (jobId) => {
+  return safeDbOperation(async () => {
+    if (!jobId) throw new Error("Job ID is required");
+
+    const docRef = doc(db, "jobs", jobId);
+    const docSnap = await getDoc(docRef);
+
+    if (docSnap.exists()) {
+      return { id: docSnap.id, ...docSnap.data() };
+    } else {
+      throw new Error(`Job with ID ${jobId} not found`);
+    }
+  }, null);
+};
+
+export const getJobs = async (filters = {}, maxResults = 10) => {
+  return safeDbOperation(async () => {
+    try {
+      const jobsRef = collection(db, "jobs");
+      let jobQuery = query(jobsRef, limit(maxResults));
+
+      // Apply filters if provided
+      if (filters.employer) {
+        jobQuery = query(jobQuery, where("employer", "==", filters.employer));
+      }
+
+      if (filters.title) {
+        jobQuery = query(jobQuery, where("title", "==", filters.title));
+      }
+
+      const querySnapshot = await getDocs(jobQuery);
+      const jobs = [];
+
+      querySnapshot.forEach((doc) => {
+        jobs.push({ id: doc.id, ...doc.data() });
+      });
+
+      return jobs;
+    } catch (error) {
+      console.error("Error in getJobs:", error);
+      throw error; // Re-throw for the outer safeDbOperation to handle
+    }
+  }, []);
+};
+
+export const subscribeToJobs = (callback, filters = {}, maxResults = 10) => {
+  if (!db) {
+    console.error("Firestore not initialized");
+    callback([], new Error("Firestore not initialized"));
+    return () => {};
+  }
+
+  try {
+    const jobsRef = collection(db, "jobs");
+    let jobQuery = query(jobsRef, limit(maxResults));
+
+    // Apply filters if provided
+    if (filters.employer) {
+      jobQuery = query(jobQuery, where("employer", "==", filters.employer));
+    }
+
+    if (filters.title) {
+      jobQuery = query(jobQuery, where("title", "==", filters.title));
+    }
+
+    return onSnapshot(
+      jobQuery,
+      (snapshot) => {
+        const jobs = [];
+        snapshot.forEach((doc) => {
+          jobs.push({ id: doc.id, ...doc.data() });
+        });
+        if (typeof callback === "function") {
+          callback(jobs);
+        }
+      },
+      (error) => {
+        console.error("Jobs snapshot error:", error);
+        if (typeof callback === "function") {
+          callback([], error);
+        }
+      }
+    );
+  } catch (error) {
+    console.error("Error setting up jobs subscription:", error);
+    if (typeof callback === "function") {
+      callback([], error);
+    }
+    return () => {};
+  }
+};
+
+// Helper functions for community features
+const getCommunityRef = (communityId) =>
   collection(db, `communities/${communityId}/messages`);
 
 export const subscribeToMessages = (communityId, callback) => {
-  const q = query(communityRef(communityId), orderBy("createdAt", "desc"));
-
+  const q = query(getCommunityRef(communityId), orderBy("createdAt", "desc"));
   return onSnapshot(q, (snapshot) => {
     const messages = [];
     snapshot.forEach((doc) => {
-      messages.push({
-        id: doc.id,
-        ...doc.data(),
-      });
+      messages.push({ id: doc.id, ...doc.data() });
     });
     callback(messages);
   });

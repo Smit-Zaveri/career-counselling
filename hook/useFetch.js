@@ -1,35 +1,52 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
-import { REACT_APP_RAPID_API_KEY } from "@env";
-
-const RapidAPIKey = REACT_APP_RAPID_API_KEY;
+import {
+  getPopularJobs,
+  getNearbyJobs,
+  getJobDetails,
+  searchJobs,
+} from "../firebase/jobServices";
 
 const useFetch = (endpoint, query) => {
   const [data, setData] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const options = {
-    method: "GET",
-    url: `https://jsearch.p.rapidapi.com/${endpoint}`,
-    headers: {
-      "X-RapidAPI-Key": RapidAPIKey,
-      "X-RapidAPI-Host": "jsearch.p.rapidapi.com",
-    },
-    params: { ...query },
-  };
-
   const fetchData = async () => {
     setIsLoading(true);
+    setError(null);
 
     try {
-      const response = await axios.request(options);
+      let response;
 
-      setData(response.data.data);
-      setIsLoading(false);
+      // Map endpoints to appropriate Firebase service functions
+      switch (endpoint) {
+        case "search":
+          response = await searchJobs(query.query);
+          break;
+
+        case "job-details":
+          response = await getJobDetails(query.job_id);
+          break;
+
+        case "popular-jobs":
+          response = await getPopularJobs();
+          break;
+
+        case "nearby-jobs":
+          response = await getNearbyJobs();
+          break;
+
+        default:
+          throw new Error(`Unknown endpoint: ${endpoint}`);
+      }
+
+      if (response.status) {
+        setData(response.data);
+      } else {
+        setError(response.error || "Something went wrong");
+      }
     } catch (error) {
-      setError(error);
-      console.log(error);
+      setError(error.message || "Something went wrong");
     } finally {
       setIsLoading(false);
     }
@@ -40,7 +57,6 @@ const useFetch = (endpoint, query) => {
   }, []);
 
   const refetch = () => {
-    setIsLoading(true);
     fetchData();
   };
 

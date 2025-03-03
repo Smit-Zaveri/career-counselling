@@ -5,21 +5,18 @@ import {
   Image,
   TouchableOpacity,
   View,
+  Text,
+  SafeAreaView,
 } from "react-native";
 import { Stack, useRouter, useSearchParams } from "expo-router";
-import { Text, SafeAreaView } from "react-native";
-import axios from "axios";
-import { REACT_APP_RAPID_API_KEY } from "@env";
 import { ScreenHeaderBtn, NearbyJobCard } from "../../components";
 import { COLORS, icons, SIZES } from "../../constants";
 import styles from "../../styles/search";
-
-const RapidAPIKey = REACT_APP_RAPID_API_KEY;
+import { searchJobs } from "../../firebase/jobServices";
 
 const JobSearch = () => {
   const params = useSearchParams();
   const router = useRouter();
-
   const [searchResult, setSearchResult] = useState([]);
   const [searchLoader, setSearchLoader] = useState(false);
   const [searchError, setSearchError] = useState(null);
@@ -27,32 +24,26 @@ const JobSearch = () => {
 
   const handleSearch = async () => {
     setSearchLoader(true);
-    setSearchResult([]);
-
     try {
-      const options = {
-        method: "GET",
-        url: `https://jsearch.p.rapidapi.com/search`,
-        headers: {
-          "X-RapidAPI-Key": RapidAPIKey,
-          "X-RapidAPI-Host": "jsearch.p.rapidapi.com",
-        },
-        params: {
-          query: params.id,
-          page: page.toString(),
-        },
-      };
-
-      const response = await axios.request(options);
-      setSearchResult(response.data.data);
+      const result = await searchJobs(params.id);
+      if (result.status) {
+        setSearchResult(result.data);
+      } else {
+        setSearchError(result.error || "Failed to search jobs");
+      }
     } catch (error) {
-      setSearchError(error);
-      console.log(error);
+      setSearchError(error.message);
     } finally {
       setSearchLoader(false);
     }
   };
 
+  useEffect(() => {
+    handleSearch();
+  }, [params.id]);
+
+  // For Firebase, we would need to implement custom pagination
+  // This is a simplified version that doesn't actually change results
   const handlePagination = (direction) => {
     if (direction === "left" && page > 1) {
       setPage(page - 1);
@@ -62,10 +53,6 @@ const JobSearch = () => {
       handleSearch();
     }
   };
-
-  useEffect(() => {
-    handleSearch();
-  }, []);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.lightWhite }}>
@@ -98,13 +85,15 @@ const JobSearch = () => {
           <>
             <View style={styles.container}>
               <Text style={styles.searchTitle}>{params.id}</Text>
-              <Text style={styles.noOfSearchedJobs}>Job Opportunities</Text>
+              <Text style={styles.noOfSearchedJobs}>
+                {searchResult.length} Jobs Found
+              </Text>
             </View>
             <View style={styles.loaderContainer}>
               {searchLoader ? (
                 <ActivityIndicator size="large" color={COLORS.primary} />
               ) : (
-                searchError && <Text>Oops something went wrong</Text>
+                searchError && <Text>Something went wrong: {searchError}</Text>
               )}
             </View>
           </>
@@ -114,6 +103,7 @@ const JobSearch = () => {
             <TouchableOpacity
               style={styles.paginationButton}
               onPress={() => handlePagination("left")}
+              disabled={page === 1}
             >
               <Image
                 source={icons.chevronLeft}

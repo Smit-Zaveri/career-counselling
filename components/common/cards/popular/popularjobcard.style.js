@@ -6,16 +6,18 @@ const styles = StyleSheet.create({
   container: (selectedJob, item) => ({
     width: 250,
     padding: SIZES.xLarge,
-    backgroundColor: selectedJob === item.job_id ? COLORS.primary : "#FFF",
+    backgroundColor: selectedJob === item?.job_id ? COLORS.primary : "#FFF",
     borderRadius: SIZES.medium,
     justifyContent: "space-between",
     ...SHADOWS.medium,
     shadowColor: COLORS.white,
+    margin: SIZES.small,
+    elevation: 2,
   }),
   logoContainer: (selectedJob, item) => ({
     width: 50,
     height: 50,
-    backgroundColor: selectedJob === item.job_id ? "#FFF" : COLORS.white,
+    backgroundColor: selectedJob === item?.job_id ? "#FFF" : COLORS.white,
     borderRadius: SIZES.medium,
     justifyContent: "center",
     alignItems: "center",
@@ -36,7 +38,7 @@ const styles = StyleSheet.create({
   jobName: (selectedJob, item) => ({
     fontSize: SIZES.large,
     fontFamily: FONT.medium,
-    color: selectedJob === item.job_id ? COLORS.white : COLORS.primary,
+    color: selectedJob === item?.job_id ? COLORS.white : COLORS.primary,
   }),
   infoWrapper: {
     flexDirection: "row",
@@ -47,12 +49,20 @@ const styles = StyleSheet.create({
   publisher: (selectedJob, item) => ({
     fontSize: SIZES.medium - 2,
     fontFamily: FONT.regular,
-    color: selectedJob === item.job_id ? COLORS.white : COLORS.primary,
+    color: selectedJob === item?.job_id ? COLORS.white : COLORS.primary,
   }),
   location: {
     fontSize: SIZES.medium - 2,
     fontFamily: FONT.regular,
     color: "#B3AEC6",
+  },
+  // Add save button style
+  saveButton: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    zIndex: 1,
+    padding: 5,
   },
 });
 
