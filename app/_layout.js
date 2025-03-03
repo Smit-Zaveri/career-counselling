@@ -168,6 +168,14 @@ const Layout = () => {
           }}
         />
         <Stack.Screen
+          name="account"
+          options={{
+            headerShown: false,
+            presentation: "card", // Added presentation mode for better animation
+          }}
+        />
+
+        <Stack.Screen
           name="login"
           options={{
             headerShown: false,
@@ -181,6 +189,12 @@ const Layout = () => {
         />
         <Stack.Screen
           name="forgot-password"
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="EditProfileScreen"
           options={{
             headerShown: false,
           }}

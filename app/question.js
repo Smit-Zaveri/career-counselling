@@ -226,10 +226,13 @@ const Question = () => {
         const userRef = doc(db, "users", userId);
 
         await updateDoc(userRef, {
-          questionsAnswered: true,
+          questionsAnswered: true, // Updated variable name to match account.js
           answers: newAnswers,
           updatedAt: new Date().toISOString(),
         });
+
+        // Also update in AsyncStorage
+        await AsyncStorage.setItem("questionsAnswered", "true");
 
         router.replace("home");
       } catch (error) {

@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  Animated,
   SafeAreaView,
   StatusBar,
   Dimensions,
@@ -17,7 +16,7 @@ import {
 import { useRouter, useFocusEffect } from "expo-router";
 import Icon from "react-native-vector-icons/Ionicons";
 import { LinearGradient } from "expo-linear-gradient";
-import { COLORS, FONT, SIZES, SHADOWS } from "../constants";
+import { COLORS, FONT, SIZES } from "../constants";
 import { signOut } from "firebase/auth";
 import { auth, db } from "../firebase/config";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -26,17 +25,44 @@ import { doc, getDoc } from "firebase/firestore";
 const { width } = Dimensions.get("window");
 const CARD_WIDTH = width - 32;
 
+// Data-specific skeleton components
+const SkeletonUserInfo = () => (
+  <View style={styles.profileImageSection}>
+    <View style={styles.skeletonAvatar} />
+    <View style={styles.skeletonNameContainer}>
+      <View style={styles.skeletonName} />
+      <View style={styles.skeletonEmail} />
+      <View style={styles.skeletonMember} />
+    </View>
+  </View>
+);
+
+const SkeletonProfileCompletion = () => (
+  <View style={styles.completionContainer}>
+    <View style={styles.completionTextContainer}>
+      <View style={styles.skeletonCompletionText} />
+      <View style={styles.skeletonCompletionPercentage} />
+    </View>
+    <View style={styles.skeletonProgressBar} />
+  </View>
+);
+
+const SkeletonStatsItem = () => (
+  <View style={styles.statItem}>
+    <View style={styles.skeletonStatIcon} />
+    <View style={styles.skeletonStatNumber} />
+    <View style={styles.skeletonStatLabel} />
+  </View>
+);
+
 const ProfileScreen = () => {
   const router = useRouter();
   const [userData, setUserData] = useState(null);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const modalAnimation = new Animated.Value(0);
   const [isAuthenticated, setIsAuthenticated] = useState(true);
-
-  // Animations
-  const headerOpacity = new Animated.Value(0);
-  const profileScale = new Animated.Value(0.9);
-  const optionsTranslateY = new Animated.Value(50);
+  const [isLoading, setIsLoading] = useState(true);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [profileDataLoading, setProfileDataLoading] = useState(true);
 
   // Check authentication status on screen focus
   useFocusEffect(
@@ -71,50 +97,24 @@ const ProfileScreen = () => {
     }, [isAuthenticated])
   );
 
+  // Add useFocusEffect to refresh data when profile is focused
+  useFocusEffect(
+    React.useCallback(() => {
+      console.log("Profile screen focused, reloading data");
+      loadUserData();
+      return () => {
+        // Any cleanup needed
+      };
+    }, [])
+  );
+
   useEffect(() => {
     loadUserData();
-    animateContent();
   }, []);
 
-  useEffect(() => {
-    if (showLogoutModal) {
-      Animated.spring(modalAnimation, {
-        toValue: 1,
-        tension: 80,
-        friction: 8,
-        useNativeDriver: true,
-      }).start();
-    } else {
-      Animated.timing(modalAnimation, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }).start();
-    }
-  }, [showLogoutModal]);
-
-  const animateContent = () => {
-    Animated.parallel([
-      Animated.timing(headerOpacity, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-      Animated.spring(profileScale, {
-        toValue: 1,
-        friction: 7,
-        tension: 50,
-        useNativeDriver: true,
-      }),
-      Animated.timing(optionsTranslateY, {
-        toValue: 0,
-        duration: 800,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  };
-
   const loadUserData = async () => {
+    setProfileDataLoading(true);
+    setStatsLoading(true);
     try {
       // Check if user is authenticated first
       const authStatus = await AsyncStorage.getItem("isLoggedIn");
@@ -131,22 +131,43 @@ const ProfileScreen = () => {
         return;
       }
 
+      const cachedData = await AsyncStorage.getItem("userData");
+      if (cachedData) {
+        const parsed = JSON.parse(cachedData);
+        // Temporarily set cached data while fetching latest
+        setUserData(parsed);
+        // Basic profile data can be shown from cache immediately
+        setProfileDataLoading(false);
+      }
+
       const userDoc = await getDoc(doc(db, "users", userId));
       if (userDoc.exists()) {
         const data = userDoc.data();
         const userData = {
-          name: data.name,
-          email: auth.currentUser.email,
+          name: data.name || "User Name",
+          email: auth.currentUser.email || "email@example.com",
           photoUrl: data.photoUrl,
           createdAt: data.createdAt,
           jobsApplied: data.jobsApplied || 0,
           savedJobs: data.savedJobs || 0,
           interviews: data.interviews || 0,
-          completedProfile: data.completedProfile || 70, // Profile completion percentage
+          completedProfile:
+            data.completedProfile || calculateProfileCompletion(data),
+          jobPreferences: data.jobPreferences || [],
+          skills: data.skills || [],
+          experience: data.experience || "Not specified",
+          education: data.education || "Not specified",
         };
 
         await AsyncStorage.setItem("userData", JSON.stringify(userData));
         setUserData(userData);
+        setProfileDataLoading(false);
+
+        // Give stats a bit more time to simulate real-world network conditions
+        setTimeout(() => {
+          setStatsLoading(false);
+          setIsLoading(false);
+        }, 300);
       }
     } catch (error) {
       console.error("Error loading user data:", error);
@@ -154,7 +175,41 @@ const ProfileScreen = () => {
       if (storedData) {
         setUserData(JSON.parse(storedData));
       }
+      setProfileDataLoading(false);
+      setStatsLoading(false);
+      setIsLoading(false);
     }
+  };
+
+  // Updated profile completion calculation to match EditProfileScreen
+  const calculateProfileCompletion = (data) => {
+    let totalScore = 0;
+    let maxScore = 100; // Total possible score
+
+    // Basic information - 40%
+    if (data.name && data.name.trim().length > 0) totalScore += 10;
+    if (data.email && data.email.trim().length > 0) totalScore += 5;
+    if (data.photoUrl) totalScore += 15;
+    if (data.phone && data.phone.trim().length > 0) totalScore += 10;
+
+    // Education & Experience - 30%
+    if (data.education && data.education.trim().length > 0) totalScore += 15;
+    if (data.experience && data.experience.trim().length > 0) totalScore += 15;
+
+    // Skills - 15%
+    if (data.skills && data.skills.length > 0) {
+      // More skills, higher score (up to 15%)
+      totalScore += Math.min(data.skills.length * 3, 15);
+    }
+
+    // Job preferences - 15%
+    if (data.jobPreferences && data.jobPreferences.length > 0) {
+      // More preferences, higher score (up to 15%)
+      totalScore += Math.min(data.jobPreferences.length * 5, 15);
+    }
+
+    // Calculate final percentage
+    return Math.round((totalScore / maxScore) * 100);
   };
 
   const goToEditProfile = () => {
@@ -178,7 +233,6 @@ const ProfileScreen = () => {
           "user",
           "userData",
           "hasCompletedQuestions",
-          // Don't remove isLoggedIn here as we've already set it to "false"
         ]);
 
         // Clear navigation history and replace with login screen
@@ -195,7 +249,17 @@ const ProfileScreen = () => {
       router.replace("login");
       return;
     }
-    router.push(screenName);
+
+    console.log(`Navigating to: ${screenName}`);
+
+    // Ensure we use the correct path format for navigation
+    try {
+      router.push(`/${screenName}`);
+    } catch (error) {
+      console.error(`Navigation error to ${screenName}:`, error);
+      // Try alternative path format if the first one fails
+      router.push(screenName);
+    }
   };
 
   const formatDate = (timestamp) => {
@@ -208,38 +272,20 @@ const ProfileScreen = () => {
     });
   };
 
-  // Interpolate animation values
-  const modalTranslateY = modalAnimation.interpolate({
-    inputRange: [0, 1],
-    outputRange: [300, 0],
-  });
-
-  const backdropOpacity = modalAnimation.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 0.5],
-  });
-
   // Custom Logout Modal Component
   const LogoutModal = () => {
     return (
       <Modal
         transparent={true}
         visible={showLogoutModal}
-        animationType="none"
+        animationType="fade"
         onRequestClose={() => setShowLogoutModal(false)}
       >
         <TouchableWithoutFeedback onPress={() => setShowLogoutModal(false)}>
-          <Animated.View
-            style={[styles.modalBackdrop, { opacity: backdropOpacity }]}
-          />
+          <View style={styles.modalBackdrop} />
         </TouchableWithoutFeedback>
 
-        <Animated.View
-          style={[
-            styles.modalContainer,
-            { transform: [{ translateY: modalTranslateY }] },
-          ]}
-        >
+        <View style={styles.modalContainer}>
           <View style={styles.modalHandle} />
 
           <View style={styles.modalContent}>
@@ -269,7 +315,7 @@ const ProfileScreen = () => {
               </TouchableOpacity>
             </View>
           </View>
-        </Animated.View>
+        </View>
       </Modal>
     );
   };
@@ -286,10 +332,8 @@ const ProfileScreen = () => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Animated Header with Gradient */}
-        <Animated.View
-          style={[styles.headerContainer, { opacity: headerOpacity }]}
-        >
+        {/* Header with Gradient */}
+        <View style={styles.headerContainer}>
           <LinearGradient
             colors={[COLORS.primary, "#396AFC"]}
             start={{ x: 0, y: 0 }}
@@ -298,112 +342,140 @@ const ProfileScreen = () => {
           >
             <Text style={styles.headerTitle}>My Profile</Text>
           </LinearGradient>
-        </Animated.View>
+        </View>
 
         {/* Profile Card */}
-        <Animated.View
-          style={[styles.profileCard, { transform: [{ scale: profileScale }] }]}
-        >
-          <View style={styles.profileImageSection}>
-            {userData?.photoUrl ? (
-              <Image
-                source={{ uri: userData.photoUrl }}
-                style={styles.avatar}
-              />
-            ) : (
-              <View style={styles.avatarPlaceholder}>
-                <Icon name="person" size={40} color={COLORS.white} />
+        <View style={styles.profileCard}>
+          {/* User basic info - show skeleton while loading */}
+          {profileDataLoading ? (
+            <SkeletonUserInfo />
+          ) : (
+            <>
+              <View style={styles.profileImageSection}>
+                {userData?.photoUrl ? (
+                  <Image
+                    source={{ uri: userData.photoUrl }}
+                    style={styles.avatar}
+                  />
+                ) : (
+                  <View style={styles.avatarPlaceholder}>
+                    <Icon name="person" size={40} color={COLORS.white} />
+                  </View>
+                )}
+                <TouchableOpacity
+                  style={styles.editButton}
+                  onPress={goToEditProfile}
+                >
+                  <Icon name="pencil" size={16} color={COLORS.white} />
+                </TouchableOpacity>
               </View>
-            )}
-            <TouchableOpacity
-              style={styles.editButton}
-              onPress={goToEditProfile}
-            >
-              <Icon name="pencil" size={16} color={COLORS.white} />
-            </TouchableOpacity>
-          </View>
 
-          <Text style={styles.fullName}>{userData?.name || "User Name"}</Text>
-          <Text style={styles.email}>{userData?.email || ""}</Text>
-
-          <Text style={styles.memberSince}>
-            Member since{" "}
-            {userData?.createdAt ? formatDate(userData.createdAt) : "N/A"}
-          </Text>
-
-          {/* Profile Completion */}
-          <View style={styles.completionContainer}>
-            <View style={styles.completionTextContainer}>
-              <Text style={styles.completionText}>Profile Completion</Text>
-              <Text style={styles.completionPercentage}>
-                {userData?.completedProfile || 70}%
+              <Text style={styles.fullName}>
+                {userData?.name || "User Name"}
               </Text>
-            </View>
-            <View style={styles.progressBarBackground}>
-              <View
-                style={[
-                  styles.progressBar,
-                  { width: `${userData?.completedProfile || 70}%` },
-                ]}
-              />
-            </View>
-          </View>
+              <Text style={styles.email}>{userData?.email || ""}</Text>
 
+              <Text style={styles.memberSince}>
+                Member since{" "}
+                {userData?.createdAt ? formatDate(userData.createdAt) : "N/A"}
+              </Text>
+            </>
+          )}
+
+          {/* Profile Completion - show skeleton while loading */}
+          {profileDataLoading ? (
+            <SkeletonProfileCompletion />
+          ) : (
+            <View style={styles.completionContainer}>
+              <View style={styles.completionTextContainer}>
+                <Text style={styles.completionText}>Profile Completion</Text>
+                <Text style={styles.completionPercentage}>
+                  {userData?.completedProfile || 0}%
+                </Text>
+              </View>
+              <View style={styles.progressBarBackground}>
+                <View
+                  style={[
+                    styles.progressBar,
+                    { width: `${userData?.completedProfile || 0}%` },
+                  ]}
+                />
+              </View>
+              {userData?.completedProfile < 70 && (
+                <Text style={styles.completionTip}>
+                  Complete your profile to improve visibility to employers
+                </Text>
+              )}
+            </View>
+          )}
+
+          {/* Stats Container - show skeleton while loading */}
           <View style={styles.statsContainer}>
-            <View style={styles.statItem}>
-              <View
-                style={[
-                  styles.statIconCircle,
-                  { backgroundColor: "rgba(90, 24, 154, 0.1)" },
-                ]}
-              >
-                <Icon name="briefcase-outline" size={18} color="#5A189A" />
-              </View>
-              <Text style={styles.statNumber}>
-                {userData?.jobsApplied || 0}
-              </Text>
-              <Text style={styles.statLabel}>Jobs Applied</Text>
-            </View>
+            {statsLoading ? (
+              <>
+                <SkeletonStatsItem />
+                <View style={styles.verticalDivider} />
+                <SkeletonStatsItem />
+                <View style={styles.verticalDivider} />
+                <SkeletonStatsItem />
+              </>
+            ) : (
+              <>
+                <View style={styles.statItem}>
+                  <View
+                    style={[
+                      styles.statIconCircle,
+                      { backgroundColor: "rgba(90, 24, 154, 0.1)" },
+                    ]}
+                  >
+                    <Icon name="briefcase-outline" size={18} color="#5A189A" />
+                  </View>
+                  <Text style={styles.statNumber}>
+                    {userData?.jobsApplied || 0}
+                  </Text>
+                  <Text style={styles.statLabel}>Jobs Applied</Text>
+                </View>
 
-            <View style={styles.verticalDivider}></View>
+                <View style={styles.verticalDivider} />
 
-            <View style={styles.statItem}>
-              <View
-                style={[
-                  styles.statIconCircle,
-                  { backgroundColor: "rgba(0, 119, 182, 0.1)" },
-                ]}
-              >
-                <Icon name="bookmark-outline" size={18} color="#0077B6" />
-              </View>
-              <Text style={styles.statNumber}>{userData?.savedJobs || 0}</Text>
-              <Text style={styles.statLabel}>Saved Jobs</Text>
-            </View>
+                <View style={styles.statItem}>
+                  <View
+                    style={[
+                      styles.statIconCircle,
+                      { backgroundColor: "rgba(0, 119, 182, 0.1)" },
+                    ]}
+                  >
+                    <Icon name="bookmark-outline" size={18} color="#0077B6" />
+                  </View>
+                  <Text style={styles.statNumber}>
+                    {userData?.savedJobs || 0}
+                  </Text>
+                  <Text style={styles.statLabel}>Saved Jobs</Text>
+                </View>
 
-            <View style={styles.verticalDivider}></View>
+                <View style={styles.verticalDivider} />
 
-            <View style={styles.statItem}>
-              <View
-                style={[
-                  styles.statIconCircle,
-                  { backgroundColor: "rgba(39, 174, 96, 0.1)" },
-                ]}
-              >
-                <Icon name="calendar-outline" size={18} color="#27AE60" />
-              </View>
-              <Text style={styles.statNumber}>{userData?.interviews || 0}</Text>
-              <Text style={styles.statLabel}>Interviews</Text>
-            </View>
+                <View style={styles.statItem}>
+                  <View
+                    style={[
+                      styles.statIconCircle,
+                      { backgroundColor: "rgba(39, 174, 96, 0.1)" },
+                    ]}
+                  >
+                    <Icon name="calendar-outline" size={18} color="#27AE60" />
+                  </View>
+                  <Text style={styles.statNumber}>
+                    {userData?.interviews || 0}
+                  </Text>
+                  <Text style={styles.statLabel}>Interviews</Text>
+                </View>
+              </>
+            )}
           </View>
-        </Animated.View>
+        </View>
 
         {/* Options */}
-        <Animated.View
-          style={[
-            styles.optionsContainer,
-            { transform: [{ translateY: optionsTranslateY }] },
-          ]}
-        >
+        <View style={styles.optionsContainer}>
           {/* My Account */}
           <TouchableOpacity
             style={styles.optionRow}
@@ -482,7 +554,7 @@ const ProfileScreen = () => {
               </Text>
             </View>
           </TouchableOpacity>
-        </Animated.View>
+        </View>
 
         <View style={styles.footer}>
           <Text style={styles.versionText}>Version 1.0.0</Text>
@@ -501,6 +573,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.lightWhite,
+    marginBottom: 35,
   },
   scrollContent: {
     paddingBottom: 40,
@@ -638,6 +711,13 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     borderRadius: 5,
   },
+  completionTip: {
+    marginTop: 8,
+    fontFamily: FONT.regular,
+    fontSize: SIZES.small + 1,
+    color: COLORS.secondary,
+    fontStyle: "italic",
+  },
   statsContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -661,7 +741,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 12,
-    elevation: 2,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -744,7 +823,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   footer: {
-    marginTop: 35,
+    marginTop: 15,
     alignItems: "center",
     paddingBottom: 15,
   },
@@ -761,6 +840,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: "#000",
+    opacity: 0.5,
   },
   modalContainer: {
     position: "absolute",
@@ -856,5 +936,74 @@ const styles = StyleSheet.create({
     fontFamily: FONT.medium,
     fontSize: SIZES.medium + 1,
     color: COLORS.white,
+  },
+  // Skeleton styles
+  skeletonAvatar: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: COLORS.gray2,
+    marginBottom: 18,
+  },
+  skeletonNameContainer: {
+    alignItems: "center",
+  },
+  skeletonName: {
+    width: 100,
+    height: 20,
+    backgroundColor: COLORS.gray2,
+    borderRadius: 10,
+    marginBottom: 6,
+  },
+  skeletonEmail: {
+    width: 150,
+    height: 16,
+    backgroundColor: COLORS.gray2,
+    borderRadius: 8,
+    marginBottom: 15,
+  },
+  skeletonMember: {
+    width: 120,
+    height: 16,
+    backgroundColor: COLORS.gray2,
+    borderRadius: 8,
+  },
+  skeletonCompletionText: {
+    width: 120,
+    height: 16,
+    backgroundColor: COLORS.gray2,
+    borderRadius: 8,
+  },
+  skeletonCompletionPercentage: {
+    width: 40,
+    height: 16,
+    backgroundColor: COLORS.gray2,
+    borderRadius: 8,
+  },
+  skeletonProgressBar: {
+    width: "100%",
+    height: 10,
+    backgroundColor: COLORS.gray2,
+    borderRadius: 5,
+  },
+  skeletonStatIcon: {
+    width: 45,
+    height: 45,
+    borderRadius: 22.5,
+    backgroundColor: COLORS.gray2,
+    marginBottom: 12,
+  },
+  skeletonStatNumber: {
+    width: 30,
+    height: 20,
+    backgroundColor: COLORS.gray2,
+    borderRadius: 10,
+    marginBottom: 6,
+  },
+  skeletonStatLabel: {
+    width: 60,
+    height: 16,
+    backgroundColor: COLORS.gray2,
+    borderRadius: 8,
   },
 });
