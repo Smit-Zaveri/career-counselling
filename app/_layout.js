@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, TouchableOpacity, Image } from "react-native";
+import { View, Text, BackHandler } from "react-native";
 import { Stack, useRouter, usePathname } from "expo-router";
 import { useFonts } from "expo-font";
 import ScreenBottom from "../components/common/bottom/ScreenBottom";
@@ -17,33 +17,81 @@ const Layout = () => {
   const router = useRouter();
   const pathname = usePathname();
   const [previousMainScreen, setPreviousMainScreen] = useState("home");
-  const currentScreen = pathname.slice(1) || "home";
+  const currentScreen = pathname?.slice(1) || "home";
   const [userProfilePic, setUserProfilePic] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // Define screens that don't require authentication
+  const publicScreens = [
+    "login",
+    "register",
+    "forgot-password",
+    "question",
+    "index",
+  ];
+
+  // All other screens require authentication
+  const isProtectedRoute = !publicScreens.includes(currentScreen);
+
+  useEffect(() => {
+    const checkAuthStatus = async () => {
+      try {
+        const authStatus = await AsyncStorage.getItem("isLoggedIn");
+        setIsAuthenticated(authStatus === "true");
+
+        if (isProtectedRoute && authStatus !== "true") {
+          router.replace("login");
+        }
+      } catch (error) {
+        console.error("Error checking auth status:", error);
+        setIsAuthenticated(false);
+        if (isProtectedRoute) {
+          router.replace("login");
+        }
+      }
+    };
+
+    checkAuthStatus();
+
+    // Setup back button handler
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      () => {
+        if (isProtectedRoute && !isAuthenticated) {
+          router.replace("login");
+          return true;
+        }
+        return false;
+      }
+    );
+
+    return () => {
+      backHandler.remove();
+    };
+  }, [pathname, isAuthenticated]);
 
   useEffect(() => {
     loadProfilePic();
-  }, []);
+  }, [isAuthenticated]);
 
   const loadProfilePic = async () => {
+    if (!isAuthenticated) return;
+
     try {
       const userData = await AsyncStorage.getItem("userData");
       if (userData) {
-        const { photoUrl } = JSON.parse(userData);
-        setUserProfilePic(photoUrl);
+        const parsedData = JSON.parse(userData);
+        if (parsedData && parsedData.photoUrl) {
+          setUserProfilePic(parsedData.photoUrl);
+        }
       }
     } catch (error) {
       console.error("Error loading profile pic:", error);
     }
   };
 
-  // Define main screens and secondary screens
+  // Define main screens
   const mainScreens = ["home", "job", "chat", "community", "profile"];
-  const secondaryScreens = ["notification", "job-details", "search"];
-
-  // Determine which screen should be active in the bottom bar
-  const activeScreen = mainScreens.includes(currentScreen)
-    ? currentScreen
-    : previousMainScreen;
 
   // Update previous main screen when navigating between main screens
   useEffect(() => {
@@ -59,103 +107,161 @@ const Layout = () => {
   });
 
   const shouldHideNavigation = () => {
-    return (
-      pathname === "/question" ||
-      pathname === "/login" ||
-      pathname === "/register" ||
-      pathname === "/forgot-password"
-    );
+    return publicScreens.includes(currentScreen);
   };
 
-  const defaultScreenOptions = {
-    headerStyle: { backgroundColor: COLORS.lightWhite },
-    headerBackVisible: false,
-    headerTitle: () => (
-      <Text
-        style={{
-          fontSize: SIZES.large,
-          color: COLORS.primary,
-          fontFamily: "DMBold",
-        }}
-      >
-        {currentScreen.charAt(0).toUpperCase() + currentScreen.slice(1)}
-      </Text>
-    ),
-    // headerLeft: () => (
-    //   <ScreenHeaderBtn
-    //     iconUrl={icons.menu}
-    //     dimension="60%"
-    //     handlePress={() => router.push("home")}
-    //   />
-    // ),
-    headerRight: () => (
-      <View style={{ flexDirection: "row" }}>
-        <Icons
-          iconUrl={icons.notification}
-          dimension="100%"
-          handlePress={() => router.push("notification")}
-          marginHorizontal={SIZES.medium}
-        />
-        <ScreenHeaderBtn
-          iconUrl={userProfilePic ? { uri: userProfilePic } : images.profile}
-          dimension="100%"
-          handlePress={() => router.push("profile")}
-        />
-      </View>
-    ),
+  const navigateWithAuthCheck = (screenName) => {
+    if (!isAuthenticated && !publicScreens.includes(screenName)) {
+      router.replace("login");
+    } else {
+      router.push(screenName);
+    }
   };
+
+  // Right header component
+  const HeaderRight = () => (
+    <View style={{ flexDirection: "row" }}>
+      <Icons
+        iconUrl={icons.notification}
+        dimension="100%"
+        handlePress={() => navigateWithAuthCheck("notification")}
+        marginHorizontal={SIZES.medium}
+      />
+      <ScreenHeaderBtn
+        iconUrl={userProfilePic ? { uri: userProfilePic } : images.profile}
+        dimension="100%"
+        handlePress={() => navigateWithAuthCheck("profile")}
+      />
+    </View>
+  );
 
   if (!fontsLoaded) {
     return null;
   }
+
+  // Determine active screen for bottom navigation
+  const activeScreen = mainScreens.includes(currentScreen)
+    ? currentScreen
+    : previousMainScreen;
 
   return (
     <AuthProvider>
       <Stack
         initialRouteName="home"
         screenOptions={{
-          gestureEnabled: false, // Disable swipe back gesture
+          headerStyle: { backgroundColor: COLORS.lightWhite },
+          headerShadowVisible: false,
+          headerBackVisible: false,
+          gestureEnabled: false,
         }}
       >
         <Stack.Screen
           name="index"
           options={{
             headerShown: false,
-            gestureEnabled: false,
           }}
         />
         <Stack.Screen
           name="question"
           options={{
             headerShown: false,
-            gestureEnabled: false,
           }}
         />
         <Stack.Screen
           name="login"
           options={{
             headerShown: false,
-            gestureEnabled: false,
+          }}
+        />
+        <Stack.Screen
+          name="register"
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="forgot-password"
+          options={{
+            headerShown: false,
           }}
         />
         <Stack.Screen
           name="home"
           options={{
-            headerShown: true, // Make sure header is shown
-            ...defaultScreenOptions,
-            gestureEnabled: false,
-            headerLeft: () => null, // Remove back button
+            headerTitle: "Home",
+            headerTitleStyle: {
+              fontFamily: "DMBold",
+              color: COLORS.primary,
+              fontSize: SIZES.large,
+            },
+            headerRight: () => <HeaderRight />,
           }}
         />
-        <Stack.Screen name="job" options={defaultScreenOptions} />
-        <Stack.Screen name="community" options={defaultScreenOptions} />
-        <Stack.Screen name="chat" options={defaultScreenOptions} />
-        <Stack.Screen name="profile" options={defaultScreenOptions} />
-        <Stack.Screen name="notification" options={defaultScreenOptions} />
-        <Stack.Screen name="register" options={{ headerShown: false }} />
-        <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="job"
+          options={{
+            headerTitle: "Jobs",
+            headerTitleStyle: {
+              fontFamily: "DMBold",
+              color: COLORS.primary,
+              fontSize: SIZES.large,
+            },
+            headerRight: () => <HeaderRight />,
+          }}
+        />
+        <Stack.Screen
+          name="community"
+          options={{
+            headerTitle: "Community",
+            headerTitleStyle: {
+              fontFamily: "DMBold",
+              color: COLORS.primary,
+              fontSize: SIZES.large,
+            },
+            headerRight: () => <HeaderRight />,
+          }}
+        />
+        <Stack.Screen
+          name="chat"
+          options={{
+            headerTitle: "Chat",
+            headerTitleStyle: {
+              fontFamily: "DMBold",
+              color: COLORS.primary,
+              fontSize: SIZES.large,
+            },
+            headerRight: () => <HeaderRight />,
+          }}
+        />
+        <Stack.Screen
+          name="profile"
+          options={{
+            headerTitle: "Profile",
+            headerTitleStyle: {
+              fontFamily: "DMBold",
+              color: COLORS.primary,
+              fontSize: SIZES.large,
+            },
+            headerRight: () => <HeaderRight />,
+          }}
+        />
+        <Stack.Screen
+          name="notification"
+          options={{
+            headerTitle: "Notifications",
+            headerTitleStyle: {
+              fontFamily: "DMBold",
+              color: COLORS.primary,
+              fontSize: SIZES.large,
+            },
+            headerRight: () => <HeaderRight />,
+          }}
+        />
       </Stack>
-      {!shouldHideNavigation() && <ScreenBottom activeScreen={activeScreen} />}
+
+      {!shouldHideNavigation() && isAuthenticated && (
+        <ScreenBottom activeScreen={activeScreen} />
+      )}
     </AuthProvider>
   );
 };

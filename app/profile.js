@@ -12,8 +12,9 @@ import {
   Dimensions,
   Modal,
   TouchableWithoutFeedback,
+  BackHandler,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import Icon from "react-native-vector-icons/Ionicons";
 import { LinearGradient } from "expo-linear-gradient";
 import { COLORS, FONT, SIZES, SHADOWS } from "../constants";
@@ -30,11 +31,45 @@ const ProfileScreen = () => {
   const [userData, setUserData] = useState(null);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const modalAnimation = new Animated.Value(0);
+  const [isAuthenticated, setIsAuthenticated] = useState(true);
 
   // Animations
   const headerOpacity = new Animated.Value(0);
   const profileScale = new Animated.Value(0.9);
   const optionsTranslateY = new Animated.Value(50);
+
+  // Check authentication status on screen focus
+  useFocusEffect(
+    React.useCallback(() => {
+      const checkAuthStatus = async () => {
+        const authStatus = await AsyncStorage.getItem("isLoggedIn");
+        if (authStatus !== "true") {
+          router.replace("login");
+          return;
+        }
+        setIsAuthenticated(true);
+      };
+
+      checkAuthStatus();
+
+      // Handle hardware back button to prevent navigating back after logout
+      const backHandler = BackHandler.addEventListener(
+        "hardwareBackPress",
+        () => {
+          if (!isAuthenticated) {
+            // If not authenticated, don't allow going back
+            router.replace("login");
+            return true;
+          }
+          return false;
+        }
+      );
+
+      return () => {
+        backHandler.remove();
+      };
+    }, [isAuthenticated])
+  );
 
   useEffect(() => {
     loadUserData();
@@ -81,8 +116,20 @@ const ProfileScreen = () => {
 
   const loadUserData = async () => {
     try {
+      // Check if user is authenticated first
+      const authStatus = await AsyncStorage.getItem("isLoggedIn");
+      if (authStatus !== "true") {
+        setIsAuthenticated(false);
+        router.replace("login");
+        return;
+      }
+
       const userId = auth.currentUser?.uid;
-      if (!userId) return;
+      if (!userId) {
+        setIsAuthenticated(false);
+        router.replace("login");
+        return;
+      }
 
       const userDoc = await getDoc(doc(db, "users", userId));
       if (userDoc.exists()) {
@@ -111,6 +158,10 @@ const ProfileScreen = () => {
   };
 
   const goToEditProfile = () => {
+    if (!isAuthenticated) {
+      router.replace("login");
+      return;
+    }
     router.push("EditProfileScreen");
   };
 
@@ -118,18 +169,33 @@ const ProfileScreen = () => {
     setShowLogoutModal(false);
     setTimeout(async () => {
       try {
+        // Set authentication status to false first to prevent back navigation
+        setIsAuthenticated(false);
+        await AsyncStorage.setItem("isLoggedIn", "false");
+
         await signOut(auth);
         await AsyncStorage.multiRemove([
           "user",
-          "isLoggedIn",
-          "hasCompletedQuestions",
           "userData",
+          "hasCompletedQuestions",
+          // Don't remove isLoggedIn here as we've already set it to "false"
         ]);
+
+        // Clear navigation history and replace with login screen
         router.replace("login");
       } catch (error) {
         console.error("Error during logout:", error);
       }
     }, 300); // Small delay for modal animation
+  };
+
+  // Navigation with auth check
+  const navigateToScreen = (screenName) => {
+    if (!isAuthenticated) {
+      router.replace("login");
+      return;
+    }
+    router.push(screenName);
   };
 
   const formatDate = (timestamp) => {
@@ -207,6 +273,11 @@ const ProfileScreen = () => {
       </Modal>
     );
   };
+
+  // If not authenticated, don't render the profile content
+  if (!isAuthenticated) {
+    return null;
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -337,7 +408,7 @@ const ProfileScreen = () => {
           <TouchableOpacity
             style={styles.optionRow}
             activeOpacity={0.7}
-            onPress={() => router.push("account")}
+            onPress={() => navigateToScreen("account")}
           >
             <View style={styles.optionLeft}>
               <View
@@ -360,7 +431,7 @@ const ProfileScreen = () => {
           <TouchableOpacity
             style={styles.optionRow}
             activeOpacity={0.7}
-            onPress={() => router.push("history")}
+            onPress={() => navigateToScreen("history")}
           >
             <View style={styles.optionLeft}>
               <View
@@ -379,7 +450,7 @@ const ProfileScreen = () => {
           <TouchableOpacity
             style={styles.optionRow}
             activeOpacity={0.7}
-            onPress={() => router.push("settings")}
+            onPress={() => navigateToScreen("settings")}
           >
             <View style={styles.optionLeft}>
               <View
