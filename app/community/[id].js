@@ -620,6 +620,7 @@ export default function CommunityDetails() {
         communityId: id,
         timestamp: serverTimestamp(),
         createdAt: new Date().toISOString(),
+        clientTimestamp: Date.now(), // Add this to ensure uniqueness
       };
 
       await addDoc(collection(db, "communityMessages"), messageData);
@@ -878,7 +879,12 @@ export default function CommunityDetails() {
           messages.map((message) => {
             if (message.isSystem) {
               return (
-                <View key={message.id} style={styles.systemMessageContainer}>
+                <View
+                  key={`${message.id}_${
+                    message.clientTimestamp || Date.now()
+                  }_${Math.random().toString(36).substr(2, 9)}`}
+                  style={styles.systemMessageContainer}
+                >
                   <Text style={styles.systemMessageText}>
                     {message.content}
                   </Text>
@@ -889,7 +895,9 @@ export default function CommunityDetails() {
             const isOwnMessage = message.userId === auth.currentUser?.uid;
             return (
               <ChatMessage
-                key={message.id}
+                key={`${message.id}_${
+                  message.clientTimestamp || Date.now()
+                }_${Math.random().toString(36).substr(2, 9)}`}
                 message={message}
                 isOwnMessage={isOwnMessage}
               />
