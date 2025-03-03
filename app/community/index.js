@@ -179,15 +179,25 @@ export default function Community() {
   };
 
   const handleCommunityPress = (id, title, description, image) => {
-    router.push({
-      pathname: `/community/${id}`,
-      params: {
-        id,
-        title,
-        description,
-        image,
-      },
-    });
+    try {
+      const safeImageUrl = image.startsWith("file://")
+        ? image.replace(/[^\w\s/.-]/g, "")
+        : image;
+
+      // Use replace instead of push for consistent navigation
+      router.replace({
+        pathname: `/community/${id}`,
+        params: {
+          id,
+          title: encodeURIComponent(title),
+          description: encodeURIComponent(description),
+          image: encodeURIComponent(safeImageUrl),
+        },
+      });
+    } catch (error) {
+      console.error("Navigation error:", error);
+      router.replace(`/community/${id}`);
+    }
   };
 
   const handleJoinLeave = async (communityId, isMember) => {
@@ -280,6 +290,10 @@ export default function Community() {
     fetchCommunities();
   };
 
+  const handleCreateCommunity = () => {
+    router.replace("/community/create");
+  };
+
   if (loading && !refreshing) {
     return (
       <View style={styles.loadingContainer}>
@@ -361,10 +375,7 @@ export default function Community() {
         />
       </View>
 
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => router.push("/community/create")}
-      >
+      <TouchableOpacity style={styles.fab} onPress={handleCreateCommunity}>
         <AntDesign name="plus" size={24} color="white" />
       </TouchableOpacity>
     </View>

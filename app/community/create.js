@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -9,12 +9,15 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  BackHandler,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { collection, addDoc } from "firebase/firestore";
 import { db, auth } from "../../firebase/config";
 import { COLORS, SIZES } from "../../constants";
 import * as ImagePicker from "expo-image-picker";
+import { Stack } from "expo-router";
+import ScreenHeaderBtn from "../../components/common/header/ScreenHeaderBtn";
 
 export default function CreateCommunity() {
   const router = useRouter();
@@ -22,6 +25,24 @@ export default function CreateCommunity() {
   const [description, setDescription] = useState("");
   const [image, setImage] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  // Add hardware back button handler for Android
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      () => {
+        handleCancel();
+        return true; // Prevent default behavior
+      }
+    );
+
+    return () => backHandler.remove();
+  }, []);
+
+  const handleCancel = () => {
+    router.replace("/community");
+    return true;
+  };
 
   const pickImage = async () => {
     try {
@@ -109,9 +130,12 @@ export default function CreateCommunity() {
         isDeleted: false,
       };
 
-      await addDoc(collection(db, "communities"), communityData);
+      const docRef = await addDoc(collection(db, "communities"), communityData);
       Alert.alert("Success", "Community created successfully!", [
-        { text: "OK", onPress: () => router.back() },
+        {
+          text: "OK",
+          onPress: () => router.replace("/community"),
+        },
       ]);
     } catch (error) {
       console.error("Error creating community:", error);
@@ -122,66 +146,90 @@ export default function CreateCommunity() {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.formContainer}>
-        <Text style={styles.label}>Community Name</Text>
-        <TextInput
-          style={styles.input}
-          value={title}
-          onChangeText={setTitle}
-          placeholder="Enter community name"
-          maxLength={50}
-        />
+    <>
+      <Stack.Screen
+        options={{
+          headerTitle: "Create Community",
+        }}
+      />
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={true}
+      >
+        <View style={styles.formContainer}>
+          <Text style={styles.label}>Community Name</Text>
+          <TextInput
+            style={styles.input}
+            value={title}
+            onChangeText={setTitle}
+            placeholder="Enter community name"
+            maxLength={50}
+          />
 
-        <Text style={styles.label}>Description</Text>
-        <TextInput
-          style={[styles.input, styles.textArea]}
-          value={description}
-          onChangeText={setDescription}
-          placeholder="What is this community about?"
-          multiline
-          numberOfLines={4}
-          maxLength={500}
-        />
+          <Text style={styles.label}>Description</Text>
+          <TextInput
+            style={[styles.input, styles.textArea]}
+            value={description}
+            onChangeText={setDescription}
+            placeholder="What is this community about?"
+            multiline
+            numberOfLines={4}
+            maxLength={500}
+          />
 
-        <Text style={styles.label}>Cover Image</Text>
-        <TouchableOpacity
-          style={styles.imagePicker}
-          onPress={pickImage}
-          disabled={loading}
-        >
-          <Text style={styles.imagePickerText}>
-            {isImageValid() ? "Change Image" : "Select Image"}
-          </Text>
-        </TouchableOpacity>
-
-        {isImageValid() ? (
-          <View style={styles.imagePreviewContainer}>
-            <Image source={{ uri: image.uri }} style={styles.imagePreview} />
-            <Text style={styles.imageInfoText}>
-              Note: This image will be stored locally and may not be accessible
-              across all devices.
+          <Text style={styles.label}>Cover Image</Text>
+          <TouchableOpacity
+            style={styles.imagePicker}
+            onPress={pickImage}
+            disabled={loading}
+          >
+            <Text style={styles.imagePickerText}>
+              {isImageValid() ? "Change Image" : "Select Image"}
             </Text>
-          </View>
-        ) : (
-          <View style={styles.noImageContainer}>
-            <Text style={styles.noImageText}>No image selected</Text>
-          </View>
-        )}
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.button, loading && styles.disabledButton]}
-          onPress={handleCreate}
-          disabled={loading || !isImageValid()}
-        >
-          {loading ? (
-            <ActivityIndicator color="white" />
+          {isImageValid() ? (
+            <View style={styles.imagePreviewContainer}>
+              <Image source={{ uri: image.uri }} style={styles.imagePreview} />
+              <Text style={styles.imageInfoText}>
+                Note: This image will be stored locally and may not be
+                accessible across all devices.
+              </Text>
+            </View>
           ) : (
-            <Text style={styles.buttonText}>Create Community</Text>
+            <View style={styles.noImageContainer}>
+              <Text style={styles.noImageText}>No image selected</Text>
+            </View>
           )}
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+
+          {/* Add separator before buttons for visual clarity */}
+          <View style={styles.separator} />
+
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={handleCancel}
+              disabled={loading}
+            >
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.button, loading && styles.disabledButton]}
+              onPress={handleCreate}
+              disabled={loading || !isImageValid()}
+            >
+              {loading ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <Text style={styles.buttonText}>Create Community</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </ScrollView>
+    </>
   );
 }
 
@@ -189,6 +237,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f8f8f8",
+  },
+  scrollContent: {
+    paddingBottom: 100, // Add extra padding at the bottom to ensure visibility
   },
   formContainer: {
     padding: SIZES.medium,
@@ -216,7 +267,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 8,
     alignItems: "center",
-    marginTop: 16,
+    flex: 2,
   },
   disabledButton: {
     opacity: 0.7,
@@ -251,7 +302,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   imagePreviewContainer: {
-    marginBottom: 16,
+    marginBottom: 24, // Increase bottom margin
     alignItems: "center",
   },
   imagePreview: {
@@ -265,5 +316,29 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#666",
     textAlign: "center",
+  },
+  // Add separator style
+  separator: {
+    height: 20, // Space before buttons
+  },
+  buttonContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 20,
+    paddingBottom: 20, // Add bottom padding
+  },
+  cancelButton: {
+    padding: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    alignItems: "center",
+    flex: 1,
+    marginRight: 10,
+  },
+  cancelButtonText: {
+    color: COLORS.gray,
+    fontSize: 16,
+    fontWeight: "600",
   },
 });

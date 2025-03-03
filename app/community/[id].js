@@ -15,6 +15,7 @@ import {
   Alert,
   Modal,
   FlatList,
+  BackHandler,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage"; // Add AsyncStorage import
 import { useLocalSearchParams } from "expo-router";
@@ -96,8 +97,14 @@ const ChatMessage = ({ message, isOwnMessage }) => {
 
 export default function CommunityDetails() {
   const router = useRouter();
+  const params = useLocalSearchParams();
+  // Safely decode URL parameters
+  const id = params.id;
+  const title = decodeURIComponent(params.title || "");
+  const description = decodeURIComponent(params.description || "");
+  const image = decodeURIComponent(params.image || "");
+
   const scrollViewRef = useRef();
-  const { id, title, description, image } = useLocalSearchParams();
   const [community, setCommunity] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isMember, setIsMember] = useState(false);
@@ -145,6 +152,19 @@ export default function CommunityDetails() {
     };
 
     getUserData();
+  }, []);
+
+  // Add hardware back button handler
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      () => {
+        router.replace("/community");
+        return true; // Prevent default behavior
+      }
+    );
+
+    return () => backHandler.remove();
   }, []);
 
   // Listen for messages and community info
@@ -787,6 +807,10 @@ export default function CommunityDetails() {
     }
   };
 
+  const handleBackPress = () => {
+    router.replace("/community"); // Replace 'back()' with explicit navigation to community index
+  };
+
   const renderTabs = () => (
     <View style={styles.tabContainer}>
       <TouchableOpacity
@@ -1145,7 +1169,7 @@ export default function CommunityDetails() {
             <ScreenHeaderBtn
               iconUrl={{ uri: "https://img.icons8.com/ios/50/ffffff/back.png" }}
               dimension="60%"
-              handlePress={() => router.back()}
+              handlePress={handleBackPress}
             />
           ),
           headerRight: () => (
