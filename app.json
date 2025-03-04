@@ -8,6 +8,9 @@
     "scheme": "acme",
     "web": {
       "bundler": "metro"
+    },
+    "android": {
+      "package": "com.career.create"
     }
   }
 }
