@@ -5,10 +5,12 @@ import {
   StyleSheet,
   TouchableOpacity,
   Dimensions,
+  Animated,
 } from "react-native";
 import { COLORS, FONT, SIZES } from "../../../constants";
 import Icon from "react-native-vector-icons/Ionicons";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
+import { LinearGradient } from "expo-linear-gradient";
 
 const { width } = Dimensions.get("window");
 
@@ -19,23 +21,56 @@ const ActivitySummary = ({ userData, router }) => {
   const interviews = userData?.interviews?.length || 0;
   const viewedProfile = userData?.profileViews || 0;
 
-  // Define activity metrics
+  // Animation values for metrics
+  const scaleAnim1 = React.useRef(new Animated.Value(0.6)).current;
+  const scaleAnim2 = React.useRef(new Animated.Value(0.6)).current;
+  const scaleAnim3 = React.useRef(new Animated.Value(0.6)).current;
+  const scaleAnim4 = React.useRef(new Animated.Value(0.6)).current;
+
+  React.useEffect(() => {
+    Animated.stagger(150, [
+      Animated.spring(scaleAnim1, {
+        toValue: 1,
+        friction: 6,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim2, {
+        toValue: 1,
+        friction: 6,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim3, {
+        toValue: 1,
+        friction: 6,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim4, {
+        toValue: 1,
+        friction: 6,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  // Define activity metrics with enhanced styling
   const activityMetrics = [
     {
       id: "applications",
       title: "Applications",
-      icon: <Icon name="document-text" size={20} color={COLORS.white} />,
+      icon: <Icon name="document-text" size={22} color={COLORS.white} />,
       value: applications,
-      backgroundColor: "#4CAF50",
+      gradientColors: ["#4CAF50", "#388E3C", "#2E7D32"],
       route: "applications",
+      animation: scaleAnim1,
     },
     {
       id: "saved",
       title: "Saved Jobs",
-      icon: <Icon name="bookmark" size={20} color={COLORS.white} />,
+      icon: <Icon name="bookmark" size={22} color={COLORS.white} />,
       value: savedJobs,
-      backgroundColor: "#2196F3",
+      gradientColors: ["#2196F3", "#1E88E5", "#1976D2"],
       route: "saved-jobs",
+      animation: scaleAnim2,
     },
     {
       id: "interviews",
@@ -43,21 +78,23 @@ const ActivitySummary = ({ userData, router }) => {
       icon: (
         <MaterialCommunityIcons
           name="calendar-clock"
-          size={20}
+          size={22}
           color={COLORS.white}
         />
       ),
       value: interviews,
-      backgroundColor: "#FF9800",
+      gradientColors: ["#FF9800", "#FB8C00", "#F57C00"],
       route: "interviews",
+      animation: scaleAnim3,
     },
     {
       id: "views",
       title: "Profile Views",
-      icon: <Icon name="eye" size={20} color={COLORS.white} />,
+      icon: <Icon name="eye" size={22} color={COLORS.white} />,
       value: viewedProfile,
-      backgroundColor: "#9C27B0",
+      gradientColors: ["#9C27B0", "#8E24AA", "#7B1FA2"],
       route: "profile-analytics",
+      animation: scaleAnim4,
     },
   ];
 
@@ -67,38 +104,54 @@ const ActivitySummary = ({ userData, router }) => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.sectionTitle}>Your Activity</Text>
+      <View style={styles.headerContainer}>
+        <Text style={styles.sectionTitle}>Your Activity</Text>
+      </View>
 
       <View style={styles.metricsContainer}>
         {activityMetrics.map((metric) => (
-          <TouchableOpacity
+          <Animated.View
             key={metric.id}
-            style={styles.metricCard}
-            onPress={() => handleMetricPress(metric.route)}
-            activeOpacity={0.7}
+            style={[
+              styles.metricCardWrapper,
+              {
+                opacity: metric.animation,
+                transform: [{ scale: metric.animation }],
+              },
+            ]}
           >
-            <View
-              style={[
-                styles.iconContainer,
-                { backgroundColor: metric.backgroundColor },
-              ]}
+            <TouchableOpacity
+              style={styles.metricCard}
+              onPress={() => handleMetricPress(metric.route)}
+              activeOpacity={0.9}
             >
-              {metric.icon}
-            </View>
-            <Text style={styles.metricValue}>{metric.value}</Text>
-            <Text style={styles.metricTitle}>{metric.title}</Text>
-          </TouchableOpacity>
+              <View style={styles.cardBackground}>
+                <View style={styles.decorCircle} />
+                <View style={[styles.decorDot, { top: "60%", left: "15%" }]} />
+                <View style={[styles.decorDot, { top: "20%", right: "15%" }]} />
+              </View>
+
+              <View style={styles.metricContent}>
+                <View style={styles.iconWrapper}>
+                  <LinearGradient
+                    colors={metric.gradientColors}
+                    style={styles.iconContainer}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                  >
+                    {metric.icon}
+                  </LinearGradient>
+                </View>
+
+                <View style={styles.metricInfo}>
+                  <Text style={styles.metricValue}>{metric.value}</Text>
+                  <Text style={styles.metricTitle}>{metric.title}</Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          </Animated.View>
         ))}
       </View>
-
-      <TouchableOpacity
-        style={styles.activityButton}
-        onPress={() => router.push("activity")}
-        activeOpacity={0.8}
-      >
-        <Text style={styles.activityButtonText}>View Full Activity</Text>
-        <Icon name="arrow-forward" size={16} color={COLORS.tertiary} />
-      </TouchableOpacity>
     </View>
   );
 };
@@ -109,64 +162,98 @@ const styles = StyleSheet.create({
     paddingHorizontal: SIZES.medium,
     paddingBottom: SIZES.medium,
   },
+  headerContainer: {
+    marginBottom: SIZES.medium + 4,
+  },
   sectionTitle: {
     fontSize: SIZES.large,
     fontFamily: FONT.bold,
     color: COLORS.primary,
-    marginBottom: SIZES.medium,
   },
   metricsContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
   },
-  metricCard: {
-    width: (width - SIZES.medium * 2 - SIZES.small) / 2,
-    backgroundColor: COLORS.white,
-    borderRadius: SIZES.medium,
-    padding: SIZES.medium,
+  metricCardWrapper: {
+    width: (width - SIZES.medium * 2 - SIZES.medium) / 2,
     marginBottom: SIZES.medium,
+    height: 130,
+  },
+  metricCard: {
+    width: "100%",
+    height: "100%",
+    backgroundColor: COLORS.white,
+    borderRadius: SIZES.large,
+    overflow: "hidden",
+    position: "relative",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.06)",
+  },
+  cardBackground: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  decorCircle: {
+    position: "absolute",
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: "rgba(0,0,0,0.02)",
+    bottom: -30,
+    right: -30,
+  },
+  decorDot: {
+    position: "absolute",
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "rgba(0,0,0,0.05)",
+  },
+  metricContent: {
+    padding: SIZES.medium,
+    flex: 1,
+    justifyContent: "space-between",
+  },
+  iconWrapper: {
+    alignSelf: "flex-start",
+    marginBottom: SIZES.small / 2,
+  },
+  iconContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 15,
+    justifyContent: "center",
     alignItems: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
   },
-  iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: SIZES.small,
+  metricInfo: {
+    alignItems: "flex-start",
   },
   metricValue: {
     fontFamily: FONT.bold,
     fontSize: SIZES.xLarge,
     color: COLORS.secondary,
-    marginBottom: SIZES.xSmall / 2,
+    marginBottom: 2,
+    textShadowColor: "rgba(0,0,0,0.1)",
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
   metricTitle: {
-    fontFamily: FONT.medium,
+    fontFamily: FONT.regular,
     fontSize: SIZES.small + 2,
     color: COLORS.gray,
-    textAlign: "center",
-  },
-  activityButton: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(4, 96, 217, 0.1)",
-    borderRadius: SIZES.small,
-    padding: SIZES.medium,
-    marginTop: SIZES.small,
-  },
-  activityButtonText: {
-    fontFamily: FONT.medium,
-    fontSize: SIZES.medium - 2,
-    color: COLORS.tertiary,
-    marginRight: SIZES.small,
   },
 });
 
