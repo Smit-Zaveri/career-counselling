@@ -157,7 +157,6 @@ const Home = () => {
           <CareerGrowth router={router} />
 
           {/* Community Highlights Section */}
-          <CommunityHighlights router={router} />
 
           {/* Activity Summary Section */}
           <ActivitySummary userData={userData} router={router} />

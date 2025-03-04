@@ -330,8 +330,6 @@ const styles = StyleSheet.create({
   },
   jobsList: {
     paddingHorizontal: SIZES.medium,
-
-    gap: SIZES.medium,
   },
 });
 

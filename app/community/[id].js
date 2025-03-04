@@ -45,6 +45,8 @@ import ViolationReportModal from "./components/ViolationReportModal";
 import { styles } from "./styles/mainComponentStyles";
 
 // Import MemberItem component - Add this import!
+
+// Import MemberItem component - Add this import!
 import MemberItem from "./components/MemberItem";
 
 // Chat message component
@@ -1167,56 +1169,13 @@ export default function CommunityDetails() {
 
   return (
     <>
-      <Stack.Screen
-        options={{
-          headerTitle: "",
-          headerTransparent: true,
-          headerTintColor: "#fff",
-          headerBackVisible: true,
-          headerLeft: () => (
-            <ScreenHeaderBtn
-              iconUrl={{ uri: "https://img.icons8.com/ios/50/ffffff/back.png" }}
-              dimension="60%"
-              handlePress={handleBackPress}
-            />
-          ),
-          headerRight: () => (
-            <View style={{ flexDirection: "row" }}>
-              {isMember && (
-                <TouchableOpacity
-                  style={styles.leaveButton}
-                  onPress={handleJoinLeave}
-                >
-                  <Text style={styles.leaveButtonText}>Leave</Text>
-                </TouchableOpacity>
-              )}
-              {!isMember && (
-                <TouchableOpacity
-                  style={styles.headerJoinButton}
-                  onPress={handleJoinLeave}
-                >
-                  <Text style={styles.headerJoinButtonText}>Join</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          ),
-        }}
-      />
+      <Stack.Screen />
       <View style={styles.container}>
         <View style={styles.coverImageContainer}>
-          <Image
-            source={{ uri: image }}
-            style={styles.coverImage}
-            resizeMode="cover"
-          />
-          <LinearGradient
-            colors={["rgba(0,0,0,0.7)", "rgba(0,0,0,0.3)", "transparent"]}
-            style={styles.imageGradient}
-          />
           <View style={styles.communityInfoOverlay}>
             <Text style={styles.communityTitle}>{title}</Text>
             <View style={styles.memberCountContainer}>
-              <Ionicons name="people-outline" size={16} color="white" />
+              <Ionicons name="people-outline" size={16} color="black" />
               <Text style={styles.memberCountText}>{memberCount} members</Text>
             </View>
           </View>
