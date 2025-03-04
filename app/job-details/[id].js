@@ -10,9 +10,12 @@ import {
   Alert,
   StyleSheet,
   Linking,
+  Share,
+  ImageBackground,
 } from "react-native";
 import { Stack, useRouter, useSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import * as Animatable from "react-native-animatable";
 
 import {
   Company,
@@ -21,9 +24,13 @@ import {
   ScreenHeaderBtn,
   Specifics,
 } from "../../components";
-import { COLORS, icons, SIZES } from "../../constants";
-import useFetch from "../../hook/useFetch";
-import { saveJob, unsaveJob } from "../../firebase/jobServices";
+import { COLORS, icons, SIZES, SHADOWS } from "../../constants";
+import {
+  getJobDetails,
+  saveJob,
+  unsaveJob,
+  checkIfJobSaved,
+} from "../../firebase/jobServices";
 import { auth } from "../../firebase/config";
 
 const tabs = ["About", "Qualifications", "Responsibilities"];
@@ -35,21 +42,63 @@ const JobDetails = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [jobSaved, setJobSaved] = useState(false);
+  const [jobData, setJobData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [similarJobs, setSimilarJobs] = useState([]);
 
-  const { data, isLoading, error, refetch } = useFetch("job-details", {
-    job_id: params.id,
-  });
-
-  // Effect to update local state when data changes
+  // Load job details when component mounts
   useEffect(() => {
-    if (data && data.length > 0) {
-      setJobSaved(data[0].isSaved);
+    fetchJobDetails();
+  }, []);
+
+  // Function to fetch job details
+  const fetchJobDetails = async () => {
+    try {
+      setIsLoading(true);
+      const jobId = params.id;
+
+      if (!jobId) {
+        setError("Job ID is missing");
+        return;
+      }
+
+      const response = await getJobDetails(jobId);
+
+      if (response.status && response.data?.length > 0) {
+        setJobData(response.data[0]);
+        setJobSaved(response.data[0].isSaved);
+
+        // Fetch similar jobs based on job title or category
+        if (response.data[0].job_title) {
+          fetchSimilarJobs(response.data[0].job_title);
+        }
+      } else {
+        setError("Failed to load job details");
+      }
+    } catch (err) {
+      console.error("Error fetching job details:", err);
+      setError("Something went wrong");
+    } finally {
+      setIsLoading(false);
     }
-  }, [data]);
+  };
+
+  // Function to fetch similar jobs
+  const fetchSimilarJobs = async (jobTitle) => {
+    try {
+      // This is a placeholder - in a real app, you would implement
+      // a proper function to fetch similar jobs from your backend
+      // For now, let's just keep an empty array
+      setSimilarJobs([]);
+    } catch (err) {
+      console.error("Error fetching similar jobs:", err);
+    }
+  };
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    refetch();
+    fetchJobDetails();
     setRefreshing(false);
   }, []);
 
@@ -62,30 +111,28 @@ const JobDetails = () => {
       return;
     }
 
-    if (!data || data.length === 0) {
+    if (!jobData) {
       Alert.alert("Error", "No job data available");
       return;
     }
 
     setIsSaving(true);
     try {
-      const job = data[0];
-
       // Optimistically update UI
       setJobSaved(!jobSaved);
 
       if (jobSaved) {
-        await unsaveJob(job.job_id);
+        await unsaveJob(jobData.job_id);
         console.log("Job unsaved successfully");
       } else {
         await saveJob({
-          jobId: job.job_id,
-          job_title: job.job_title,
-          employer_name: job.employer_name,
-          employer_logo: job.employer_logo,
-          job_country: job.job_country,
-          job_employment_type: job.job_employment_type,
-          job_apply_link: job.job_apply_link || job.job_google_link,
+          jobId: jobData.job_id,
+          job_title: jobData.job_title,
+          employer_name: jobData.employer_name,
+          employer_logo: jobData.employer_logo,
+          job_country: jobData.job_country,
+          job_employment_type: jobData.job_employment_type,
+          job_apply_link: jobData.job_apply_link || jobData.job_google_link,
         });
         console.log("Job saved successfully");
       }
@@ -100,11 +147,11 @@ const JobDetails = () => {
   };
 
   const handleApplyNow = () => {
-    if (!data || data.length === 0) return;
+    if (!jobData) return;
 
     const url =
-      data[0]?.job_apply_link ||
-      data[0]?.job_google_link ||
+      jobData?.job_apply_link ||
+      jobData?.job_google_link ||
       "https://careers.google.com/jobs/results/";
 
     Linking.canOpenURL(url).then((supported) => {
@@ -116,26 +163,52 @@ const JobDetails = () => {
     });
   };
 
+  const handleShareJob = async () => {
+    if (!jobData) return;
+
+    try {
+      const shareUrl = jobData.job_apply_link || jobData.job_google_link || "";
+      const message = `Check out this job opportunity: ${jobData.job_title} at ${jobData.employer_name}. ${shareUrl}`;
+
+      await Share.share({
+        message: message,
+        title: `${jobData.job_title} - ${jobData.employer_name}`,
+      });
+    } catch (error) {
+      console.error("Error sharing job:", error);
+    }
+  };
+
+  const handleNavigateSavedJobs = () => {
+    router.push("/SavedJobs");
+  };
+
+  const handleNavigateHome = () => {
+    router.push("/home");
+  };
+
   const displayTabContent = () => {
+    if (!jobData) return null;
+
     switch (activeTab) {
       case "Qualifications":
         return (
           <Specifics
             title="Qualifications"
-            points={data[0]?.job_highlights?.Qualifications ?? ["N/A"]}
+            points={jobData?.job_highlights?.Qualifications ?? ["N/A"]}
           />
         );
 
       case "About":
         return (
-          <JobAbout info={data[0]?.job_description ?? "No data provided"} />
+          <JobAbout info={jobData?.job_description ?? "No data provided"} />
         );
 
       case "Responsibilities":
         return (
           <Specifics
             title="Responsibilities"
-            points={data[0]?.job_highlights?.Responsibilities ?? ["N/A"]}
+            points={jobData?.job_highlights?.Responsibilities ?? ["N/A"]}
           />
         );
 
@@ -165,13 +238,23 @@ const JobDetails = () => {
                 onPress={handleSaveJob}
                 disabled={isSaving}
               >
-                <Ionicons
-                  name={jobSaved ? "bookmark" : "bookmark-outline"}
-                  size={24}
-                  color={jobSaved ? COLORS.primary : COLORS.gray}
-                />
+                <Animatable.View
+                  animation={jobSaved ? "pulse" : undefined}
+                  duration={500}
+                >
+                  <Ionicons
+                    name={jobSaved ? "bookmark" : "bookmark-outline"}
+                    size={24}
+                    color={jobSaved ? COLORS.primary : COLORS.gray}
+                  />
+                </Animatable.View>
               </TouchableOpacity>
-              <ScreenHeaderBtn iconUrl={icons.share} dimension="60%" />
+              <TouchableOpacity
+                style={styles.saveButton}
+                onPress={handleShareJob}
+              >
+                <Ionicons name="share-outline" size={24} color={COLORS.gray} />
+              </TouchableOpacity>
             </View>
           ),
           headerTitle: "",
@@ -187,40 +270,98 @@ const JobDetails = () => {
           contentContainerStyle={styles.scrollContent}
         >
           {isLoading ? (
-            <ActivityIndicator
-              size="large"
-              color={COLORS.primary}
-              style={styles.loader}
-            />
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={COLORS.primary} />
+              <Text style={styles.loadingText}>Loading job details...</Text>
+            </View>
           ) : error ? (
             <View style={styles.errorContainer}>
               <Ionicons name="alert-circle" size={50} color={COLORS.red} />
-              <Text style={styles.errorText}>Something went wrong</Text>
-              <TouchableOpacity style={styles.retryButton} onPress={refetch}>
+              <Text style={styles.errorText}>{error}</Text>
+              <TouchableOpacity
+                style={styles.retryButton}
+                onPress={fetchJobDetails}
+              >
                 <Text style={styles.retryText}>Retry</Text>
               </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.retryButton,
+                  { backgroundColor: COLORS.secondary, marginTop: 10 },
+                ]}
+                onPress={handleNavigateHome}
+              >
+                <Text style={styles.retryText}>Return Home</Text>
+              </TouchableOpacity>
             </View>
-          ) : data.length === 0 ? (
+          ) : !jobData ? (
             <View style={styles.errorContainer}>
               <Ionicons name="document" size={50} color={COLORS.gray} />
               <Text style={styles.errorText}>No data available</Text>
+              <TouchableOpacity
+                style={styles.retryButton}
+                onPress={handleNavigateHome}
+              >
+                <Text style={styles.retryText}>Browse Jobs</Text>
+              </TouchableOpacity>
             </View>
           ) : (
             <View style={styles.contentContainer}>
               <View style={styles.headerContainer}>
                 {jobSaved && (
-                  <View style={styles.savedBadge}>
+                  <Animatable.View animation="fadeIn" style={styles.savedBadge}>
                     <Ionicons name="bookmark" size={14} color={COLORS.white} />
                     <Text style={styles.savedBadgeText}>Saved</Text>
-                  </View>
+                  </Animatable.View>
                 )}
 
                 <Company
-                  companyLogo={data[0].employer_logo}
-                  jobTitle={data[0].job_title}
-                  companyName={data[0].employer_name}
-                  location={data[0].job_country}
+                  companyLogo={jobData.employer_logo}
+                  jobTitle={jobData.job_title}
+                  companyName={jobData.employer_name}
+                  location={jobData.job_country}
                 />
+
+                {/* Job Quick Info */}
+                <View style={styles.quickInfoContainer}>
+                  <View style={styles.infoTag}>
+                    <Ionicons
+                      name="briefcase-outline"
+                      size={16}
+                      color={COLORS.primary}
+                    />
+                    <Text style={styles.infoText}>
+                      {jobData.job_employment_type || "Full time"}
+                    </Text>
+                  </View>
+
+                  {jobData.job_is_remote && (
+                    <View style={styles.infoTag}>
+                      <Ionicons
+                        name="home-outline"
+                        size={16}
+                        color={COLORS.primary}
+                      />
+                      <Text style={styles.infoText}>Remote</Text>
+                    </View>
+                  )}
+
+                  <View style={styles.infoTag}>
+                    <Ionicons
+                      name="time-outline"
+                      size={16}
+                      color={COLORS.primary}
+                    />
+                    <Text style={styles.infoText}>
+                      Apply by{" "}
+                      {jobData.job_posted_at_datetime_utc
+                        ? new Date(
+                            jobData.job_posted_at_datetime_utc
+                          ).toLocaleDateString()
+                        : "ASAP"}
+                    </Text>
+                  </View>
+                </View>
               </View>
 
               <JobTabs
@@ -229,12 +370,50 @@ const JobDetails = () => {
                 setActiveTab={setActiveTab}
               />
 
-              {displayTabContent()}
+              <View style={styles.tabContent}>{displayTabContent()}</View>
+
+              {/* Similar Jobs Section */}
+              {similarJobs.length > 0 && (
+                <View style={styles.similarJobsSection}>
+                  <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionTitle}>Similar Jobs</Text>
+                    <TouchableOpacity onPress={() => router.push("/job")}>
+                      <Text style={styles.seeAllText}>See All</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.similarJobsContainer}
+                  >
+                    {/* Similar jobs would be rendered here */}
+                  </ScrollView>
+                </View>
+              )}
+
+              {/* Call to Action */}
+              <View style={styles.ctaContainer}>
+                <Text style={styles.ctaText}>
+                  Looking for more opportunities like this?
+                </Text>
+                <TouchableOpacity
+                  style={styles.ctaButton}
+                  onPress={handleNavigateSavedJobs}
+                >
+                  <Text style={styles.ctaButtonText}>View your saved jobs</Text>
+                  <Ionicons
+                    name="chevron-forward"
+                    size={16}
+                    color={COLORS.primary}
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
           )}
         </ScrollView>
 
-        {!isLoading && data && data.length > 0 && (
+        {!isLoading && jobData && (
           <View style={styles.footerContainer}>
             <TouchableOpacity
               style={[
@@ -250,19 +429,28 @@ const JobDetails = () => {
               onPress={handleSaveJob}
               disabled={isSaving}
             >
-              <Ionicons
-                name={jobSaved ? "bookmark" : "bookmark-outline"}
-                size={20}
-                color={jobSaved ? COLORS.primary : COLORS.white}
-              />
-              <Text
-                style={[
-                  styles.saveButtonText,
-                  { color: jobSaved ? COLORS.primary : COLORS.white },
-                ]}
-              >
-                {jobSaved ? "Saved" : "Save"}
-              </Text>
+              {isSaving ? (
+                <ActivityIndicator
+                  size="small"
+                  color={jobSaved ? COLORS.primary : COLORS.white}
+                />
+              ) : (
+                <>
+                  <Ionicons
+                    name={jobSaved ? "bookmark" : "bookmark-outline"}
+                    size={20}
+                    color={jobSaved ? COLORS.primary : COLORS.white}
+                  />
+                  <Text
+                    style={[
+                      styles.saveButtonText,
+                      { color: jobSaved ? COLORS.primary : COLORS.white },
+                    ]}
+                  >
+                    {jobSaved ? "Saved" : "Save"}
+                  </Text>
+                </>
+              )}
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -296,18 +484,23 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
   },
-  loader: {
+  loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    marginTop: 50,
+    paddingVertical: 100,
+  },
+  loadingText: {
+    marginTop: SIZES.medium,
+    color: COLORS.primary,
+    fontSize: SIZES.medium,
   },
   errorContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     padding: SIZES.large,
-    marginTop: 50,
+    paddingVertical: 100,
   },
   errorText: {
     fontSize: SIZES.medium,
@@ -352,6 +545,74 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     fontSize: SIZES.small,
     fontWeight: "500",
+  },
+  quickInfoContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginTop: SIZES.small,
+    gap: 8,
+  },
+  infoTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.lightWhite,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: SIZES.small,
+    marginRight: 8,
+    ...SHADOWS.small,
+  },
+  infoText: {
+    marginLeft: 4,
+    color: COLORS.secondary,
+    fontSize: SIZES.small,
+  },
+  tabContent: {
+    marginTop: SIZES.small,
+  },
+  similarJobsSection: {
+    marginTop: SIZES.large,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: SIZES.small,
+  },
+  sectionTitle: {
+    fontSize: SIZES.large - 2,
+    color: COLORS.primary,
+    fontWeight: "bold",
+  },
+  seeAllText: {
+    color: COLORS.secondary,
+    fontSize: SIZES.medium - 2,
+  },
+  similarJobsContainer: {
+    paddingVertical: SIZES.medium,
+  },
+  ctaContainer: {
+    marginTop: SIZES.large,
+    backgroundColor: COLORS.lightWhite,
+    padding: SIZES.medium,
+    borderRadius: SIZES.medium,
+    alignItems: "center",
+    ...SHADOWS.small,
+  },
+  ctaText: {
+    fontSize: SIZES.medium,
+    color: COLORS.secondary,
+    textAlign: "center",
+  },
+  ctaButton: {
+    marginTop: SIZES.small,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  ctaButtonText: {
+    color: COLORS.primary,
+    fontWeight: "bold",
+    marginRight: 4,
   },
   footerContainer: {
     position: "absolute",

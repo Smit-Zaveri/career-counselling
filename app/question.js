@@ -551,7 +551,8 @@ const Question = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.lightWhite} />
+      <StatusBar barStyle="light-content" />
+
       <View style={styles.header}>
         <View style={styles.headerTopRow}>
           {currentQuestion > 0 && (

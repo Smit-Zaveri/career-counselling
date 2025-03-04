@@ -1,117 +1,79 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
   FlatList,
   TouchableOpacity,
-  ActivityIndicator,
-  StyleSheet,
   SafeAreaView,
   StatusBar,
+  ActivityIndicator,
+  StyleSheet,
   RefreshControl,
-  Alert,
 } from "react-native";
-import { Stack, useRouter } from "expo-router";
+import { useSearchParams, Stack, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { COLORS, SIZES } from "../constants";
-import { getSavedJobs, unsaveJob } from "../firebase/jobServices";
-import JobCard from "../components/common/cards/JobCard";
+import { COLORS, SIZES } from "../../constants";
+import { getJobsByCategory } from "../../firebase/jobServices";
+import JobCard from "../../components/common/cards/JobCard";
 
-const SavedJobs = () => {
+const CategoryJobs = () => {
+  const params = useSearchParams();
+  const { id: categoryId, categoryName } = params;
   const router = useRouter();
-  const [savedJobs, setSavedJobs] = useState([]);
+
+  const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    fetchSavedJobs();
-  }, []);
-
-  const fetchSavedJobs = async (showRefreshing = false) => {
+  const fetchJobs = useCallback(async () => {
     try {
-      if (showRefreshing) {
-        setRefreshing(true);
-      } else {
-        setLoading(true);
-      }
-
-      const jobs = await getSavedJobs();
-      console.log(`Fetched ${jobs.length} saved jobs`);
-      setSavedJobs(jobs);
+      setLoading(true);
+      const jobsList = await getJobsByCategory(categoryId);
+      setJobs(jobsList);
       setError(null);
-    } catch (error) {
-      console.error("Error fetching saved jobs:", error);
-      setError("Failed to load your saved jobs. Please try again.");
+    } catch (err) {
+      console.error("Error fetching category jobs:", err);
+      setError("Failed to load jobs. Please try again.");
     } finally {
       setLoading(false);
-      if (showRefreshing) setRefreshing(false);
     }
-  };
+  }, [categoryId]);
 
-  const onRefresh = () => {
-    fetchSavedJobs(true);
-  };
+  useEffect(() => {
+    fetchJobs();
+  }, [fetchJobs]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchJobs();
+    setRefreshing(false);
+  }, [fetchJobs]);
 
   const handleJobPress = (jobId) => {
     router.push(`/job-details/${jobId}`);
   };
 
-  const handleUnsaveJob = async (jobId, documentId) => {
+  const handleUnsave = async (jobId) => {
     try {
-      // Show loading state
-      setSavedJobs((prevJobs) =>
-        prevJobs.map((job) =>
-          job.jobId === jobId ? { ...job, removing: true } : job
-        )
-      );
-
-      // Use document ID if available, otherwise use job ID
-      const idToUse = documentId || jobId;
-      console.log(`Attempting to unsave job with ID: ${idToUse}`);
-
-      // Call the unsaveJob function with proper error handling
-      await unsaveJob(idToUse);
-
-      // Remove job from the list if successful
-      setSavedJobs((prevJobs) => prevJobs.filter((job) => job.jobId !== jobId));
+      await unsaveJob(jobId);
+      setJobs((prevJobs) => prevJobs.filter((job) => job.job_id !== jobId));
     } catch (error) {
       console.error("Error unsaving job:", error);
-      Alert.alert(
-        "Error",
-        "Failed to remove job from saved list. Please try again later."
-      );
-
-      // Reset loading state on error
-      setSavedJobs((prevJobs) =>
-        prevJobs.map((job) =>
-          job.jobId === jobId ? { ...job, removing: false } : job
-        )
-      );
+      Alert.alert("Error", "Failed to unsave job. Please try again.");
     }
   };
 
-  const renderJobItem = ({ item }) => (
-    <JobCard
-      job={item}
-      handleNavigate={() => handleJobPress(item.jobId)}
-      handleUnsave={() => handleUnsaveJob(item.jobId, item.id)}
-      showUnsaveButton={true}
-      isRemoving={item.removing}
-    />
-  );
-
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" />
-
       <Stack.Screen
         options={{
           headerShown: false,
         }}
       />
 
+      {/* Header */}
       <LinearGradient
         colors={[COLORS.primary, "#396AFC"]}
         start={{ x: 0, y: 0 }}
@@ -124,43 +86,52 @@ const SavedJobs = () => {
         >
           <Ionicons name="arrow-back" size={24} color={COLORS.white} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Saved Jobs</Text>
+        <Text style={styles.headerTitle}>
+          {categoryName || "Category Jobs"}
+        </Text>
         <View style={styles.placeholder} />
       </LinearGradient>
 
-      {loading ? (
+      {/* Content */}
+      {loading && !refreshing ? (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={COLORS.primary} />
-          <Text style={styles.loadingText}>Loading saved jobs...</Text>
+          <Text style={styles.loadingText}>Loading jobs...</Text>
         </View>
       ) : error ? (
         <View style={styles.centered}>
           <Ionicons name="alert-circle" size={50} color={COLORS.red} />
           <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity
-            style={styles.retryButton}
-            onPress={() => fetchSavedJobs()}
-          >
+          <TouchableOpacity style={styles.retryButton} onPress={fetchJobs}>
             <Text style={styles.retryText}>Try Again</Text>
           </TouchableOpacity>
         </View>
-      ) : savedJobs.length === 0 ? (
+      ) : jobs.length === 0 ? (
         <View style={styles.centered}>
-          <Ionicons name="bookmark-outline" size={70} color={COLORS.gray} />
-          <Text style={styles.noJobsTitle}>No saved jobs</Text>
-          <Text style={styles.noJobsText}>Jobs you save will appear here</Text>
+          <Ionicons name="business-outline" size={70} color={COLORS.gray} />
+          <Text style={styles.noJobsTitle}>No jobs found</Text>
+          <Text style={styles.noJobsText}>
+            No jobs available in this category at the moment.
+          </Text>
           <TouchableOpacity
             style={styles.browseButton}
             onPress={() => router.push("/job")}
           >
-            <Text style={styles.browseButtonText}>Browse Jobs</Text>
+            <Text style={styles.browseButtonText}>Browse All Jobs</Text>
           </TouchableOpacity>
         </View>
       ) : (
         <FlatList
-          data={savedJobs}
-          keyExtractor={(item) => item.id}
-          renderItem={renderJobItem}
+          data={jobs}
+          keyExtractor={(item) => item.job_id}
+          renderItem={({ item }) => (
+            <JobCard
+              job={item}
+              handleNavigate={() => handleJobPress(item.job_id)}
+              handleUnsave={() => handleUnsave(item.job_id)}
+              showUnsaveButton={item.isSaved}
+            />
+          )}
           contentContainerStyle={styles.listContainer}
           showsVerticalScrollIndicator={false}
           refreshControl={
@@ -278,4 +249,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default SavedJobs;
+export default CategoryJobs;

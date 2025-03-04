@@ -16,60 +16,287 @@ import {
   setDoc,
   deleteDoc,
   addDoc,
+  startAfter,
 } from "firebase/firestore";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getAuth } from "firebase/auth";
 
-// Get popular jobs - modified to simply get all jobs without complex filtering
-export const getPopularJobs = async () => {
+// Get job categories
+export const getJobCategories = async () => {
   try {
-    console.log("Fetching popular jobs from Firebase...");
-    const jobsRef = collection(db, "jobs");
+    console.log("Fetching job categories...");
+    const categoriesRef = collection(db, "job_categories");
+    const querySnapshot = await getDocs(categoriesRef);
 
-    // Simple query without orderBy to avoid index issues
-    // Just get all jobs
-    const q = query(jobsRef);
+    const categories = [];
+    querySnapshot.forEach((doc) => {
+      categories.push({
+        id: doc.id,
+        name: doc.data().name,
+        jobCount: doc.data().jobCount || 0,
+        description: doc.data().description || "",
+      });
+    });
+
+    console.log(`Retrieved ${categories.length} job categories`);
+    return categories;
+  } catch (error) {
+    console.error("Error fetching job categories:", error);
+    return [];
+  }
+};
+
+// Get jobs by category
+export const getJobsByCategory = async (categoryId) => {
+  try {
+    console.log(`Fetching jobs for category: ${categoryId}`);
+    const jobsRef = collection(db, "jobs");
+    const q = query(
+      jobsRef,
+      where("job_category_id", "==", categoryId),
+      limit(20)
+    );
     const querySnapshot = await getDocs(q);
 
     const jobs = [];
     querySnapshot.forEach((doc) => {
-      console.log(
-        `Found job: ${doc.id} - ${doc.data().job_title || "Untitled"}`
-      );
+      const jobData = doc.data();
       jobs.push({
         job_id: doc.id,
-        ...doc.data(),
+        ...jobData,
       });
     });
 
+    // Fall back to keyword matching if no jobs found with category ID
+    if (jobs.length === 0) {
+      console.log("No jobs found by category ID, trying keyword search...");
+      // Get the category details to use in search
+      const categoryDoc = await getDoc(doc(db, "job_categories", categoryId));
+      if (categoryDoc.exists()) {
+        const categoryName = categoryDoc.data().name;
+
+        // Search by category name in various job fields
+        const allJobsSnapshot = await getDocs(
+          query(collection(db, "jobs"), limit(50))
+        );
+
+        allJobsSnapshot.forEach((doc) => {
+          const jobData = doc.data();
+          const jobTitle = jobData.job_title || "";
+          const jobDescription = jobData.job_description || "";
+
+          // Check if the job contains the category name
+          if (
+            jobTitle.toLowerCase().includes(categoryName.toLowerCase()) ||
+            jobDescription.toLowerCase().includes(categoryName.toLowerCase())
+          ) {
+            jobs.push({
+              job_id: doc.id,
+              ...jobData,
+            });
+          }
+        });
+      }
+    }
+
+    console.log(`Found ${jobs.length} jobs for category ${categoryId}`);
+    return jobs;
+  } catch (error) {
+    console.error("Error fetching jobs by category:", error);
+    return [];
+  }
+};
+
+// Updated getPopularJobs to support pagination
+export const getPopularJobs = async (limitCount = 20, offsetCount = 0) => {
+  try {
+    console.log(
+      `Fetching popular jobs from Firebase... limit: ${limitCount}, offset: ${offsetCount}`
+    );
+    const jobsRef = collection(db, "jobs");
+
+    // Use a more efficient pagination approach
+    let q;
+    try {
+      q = query(
+        jobsRef,
+        orderBy("popularity", "desc"),
+        orderBy("job_id"), // Secondary sort for consistent pagination
+        limit(limitCount + 1) // Get one extra to check if there are more pages
+      );
+
+      // If not on the first page, apply startAfter using the cached last document ID
+      if (offsetCount > 0) {
+        const lastVisibleDocId = await AsyncStorage.getItem(
+          `lastPopularJobId_${offsetCount - 1}`
+        );
+        if (lastVisibleDocId) {
+          const lastDocRef = doc(db, "jobs", lastVisibleDocId);
+          const lastDocSnap = await getDoc(lastDocRef);
+
+          if (lastDocSnap.exists()) {
+            q = query(
+              jobsRef,
+              orderBy("popularity", "desc"),
+              orderBy("job_id"),
+              startAfter(lastDocSnap),
+              limit(limitCount + 1)
+            );
+          }
+        }
+      }
+    } catch (error) {
+      console.log("Popularity field might not exist, using default query");
+      q = query(jobsRef, orderBy("job_id"), limit(limitCount + 1));
+
+      // Apply startAfter if not on first page
+      if (offsetCount > 0) {
+        const lastVisibleDocId = await AsyncStorage.getItem(
+          `lastPopularJobId_${offsetCount - 1}`
+        );
+        if (lastVisibleDocId) {
+          const lastDocRef = doc(db, "jobs", lastVisibleDocId);
+          const lastDocSnap = await getDoc(lastDocRef);
+
+          if (lastDocSnap.exists()) {
+            q = query(
+              jobsRef,
+              orderBy("job_id"),
+              startAfter(lastDocSnap),
+              limit(limitCount + 1)
+            );
+          }
+        }
+      }
+    }
+
+    const querySnapshot = await getDocs(q);
+    const userId = auth.currentUser?.uid;
+
+    // Get the user's saved jobs for comparison
+    let savedJobIds = [];
+    if (userId) {
+      const savedJobsRef = collection(db, "saved_jobs");
+      const savedJobsQuery = query(savedJobsRef, where("userId", "==", userId));
+      const savedJobsSnapshot = await getDocs(savedJobsQuery);
+      savedJobIds = savedJobsSnapshot.docs.map((doc) => doc.data().jobId);
+    }
+
+    const jobs = [];
+    let lastVisible = null;
+
+    querySnapshot.forEach((doc, i) => {
+      // Store the last document for pagination
+      if (i === limitCount) {
+        lastVisible = doc;
+        return;
+      }
+
+      const jobData = doc.data();
+      jobs.push({
+        job_id: doc.id,
+        ...jobData,
+        isSaved: savedJobIds.includes(doc.id),
+      });
+
+      // Save the last visible document ID for next page
+      if (i === limitCount - 1) {
+        lastVisible = doc;
+        AsyncStorage.setItem(`lastPopularJobId_${offsetCount}`, doc.id);
+      }
+    });
+
     console.log(`Retrieved ${jobs.length} jobs for popular section`);
-    return { data: jobs, status: jobs.length > 0 };
+    return {
+      data: jobs,
+      status: jobs.length > 0,
+      hasMore: querySnapshot.size > limitCount,
+      lastVisible: lastVisible?.id,
+    };
   } catch (error) {
     console.error("Popular jobs error:", error);
     return { data: [], status: false, error: error.message };
   }
 };
 
-// Get nearby jobs based on location
-export const getNearbyJobs = async () => {
+// Updated getNearbyJobs with pagination support
+export const getNearbyJobs = async (limitCount = 20, offsetCount = 0) => {
   try {
-    console.log("Fetching nearby jobs...");
+    console.log(
+      `Fetching nearby jobs... limit: ${limitCount}, offset: ${offsetCount}`
+    );
     const jobsRef = collection(db, "jobs");
-    // For simplicity, we're just getting jobs without location filtering
-    // In a real app, you would filter by user's location
-    const q = query(jobsRef, limit(20));
+
+    // Build the base query
+    let q = query(
+      jobsRef,
+      orderBy("job_id"),
+      limit(limitCount + 1) // Get one extra to check if there's more
+    );
+
+    // If not on the first page, apply startAfter using the cached last document ID
+    if (offsetCount > 0) {
+      const lastVisibleDocId = await AsyncStorage.getItem(
+        `lastNearbyJobId_${offsetCount - 1}`
+      );
+      if (lastVisibleDocId) {
+        const lastDocRef = doc(db, "jobs", lastVisibleDocId);
+        const lastDocSnap = await getDoc(lastDocRef);
+
+        if (lastDocSnap.exists()) {
+          q = query(
+            jobsRef,
+            orderBy("job_id"),
+            startAfter(lastDocSnap),
+            limit(limitCount + 1)
+          );
+        }
+      }
+    }
+
     const querySnapshot = await getDocs(q);
+    const userId = auth.currentUser?.uid;
+
+    // Get the user's saved jobs for comparison
+    let savedJobIds = [];
+    if (userId) {
+      const savedJobsRef = collection(db, "saved_jobs");
+      const savedJobsQuery = query(savedJobsRef, where("userId", "==", userId));
+      const savedJobsSnapshot = await getDocs(savedJobsQuery);
+      savedJobIds = savedJobsSnapshot.docs.map((doc) => doc.data().jobId);
+    }
 
     const jobs = [];
-    querySnapshot.forEach((doc) => {
+    let lastVisible = null;
+
+    querySnapshot.forEach((doc, i) => {
+      // Store only up to the requested limit
+      if (i === limitCount) {
+        lastVisible = doc;
+        return;
+      }
+
+      const jobData = doc.data();
       jobs.push({
         job_id: doc.id,
-        ...doc.data(),
+        ...jobData,
+        isSaved: savedJobIds.includes(doc.id),
       });
+
+      // Save the last visible document ID for next page
+      if (i === limitCount - 1) {
+        lastVisible = doc;
+        AsyncStorage.setItem(`lastNearbyJobId_${offsetCount}`, doc.id);
+      }
     });
 
     console.log(`Retrieved ${jobs.length} nearby jobs`);
-    return { data: jobs, status: true };
+    return {
+      data: jobs,
+      status: true,
+      hasMore: querySnapshot.size > limitCount,
+      lastVisible: lastVisible?.id,
+    };
   } catch (error) {
     console.error("Nearby jobs error:", error);
     return { data: [], status: false, error: error.message };
