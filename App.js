@@ -1,49 +1,80 @@
-import React, { useEffect } from 'react';
-import 'react-native-get-random-values';
-import { Platform } from 'react-native';
-// Import other necessary components for your app
-import ErrorHandler from './utils/ErrorHandler';
+import React, { useEffect } from "react";
+import { Platform } from "react-native";
+import { registerRootComponent } from "expo";
+import { LogBox } from "react-native";
+import ErrorHandler from "./utils/ErrorHandler";
 
-// Add TextEncoder polyfill for Hermes
-if (Platform.OS !== 'web') {
-  // Use JSBI for BigInt support
-  global.BigInt = require('big-integer');
+// Ignore specific warnings that might be causing issues
+LogBox.ignoreLogs([
+  "Warning: Failed prop type",
+  "Non-serializable values were found in the navigation state",
+  "ViewPropTypes will be removed",
+]);
 
-  // Add TextEncoder polyfill
-  global.TextEncoder = require('text-encoding').TextEncoder;
-  global.TextDecoder = require('text-encoding').TextDecoder;
+// This is necessary for Hermes and Expo Router compatibility
+if (global.HermesInternal) {
+  // Add necessary polyfills for Hermes
+  if (!global.BigInt) {
+    try {
+      global.BigInt = require("big-integer");
+    } catch (e) {
+      console.warn("Failed to load big-integer polyfill", e);
+    }
+  }
+
+  if (!global.TextEncoder) {
+    try {
+      const textEncoding = require("text-encoding");
+      global.TextEncoder = textEncoding.TextEncoder;
+      global.TextDecoder = textEncoding.TextDecoder;
+    } catch (e) {
+      console.warn("Failed to load text-encoding polyfill", e);
+    }
+  }
+
+  // Add error handler for uncaught errors
+  global.ErrorUtils &&
+    global.ErrorUtils.setGlobalHandler((error, isFatal) => {
+      console.log("Global error handler:", error);
+      if (isFatal) {
+        console.log("Fatal error occurred:", error);
+      }
+    });
 }
 
-export default function App() {
+export default function App(props) {
   useEffect(() => {
     // Initialize the global error handler
     ErrorHandler.init();
 
     // Add specific handler for unhandled promise rejections
-    const unhandledRejectionHandler = event => {
+    const unhandledRejectionHandler = (event) => {
       if (__DEV__) {
-        console.warn(
-          'Unhandled promise rejection:',
-          event.reason
-        );
+        console.warn("Unhandled promise rejection:", event.reason);
       }
     };
 
     // Add event listener for unhandled rejections
     if (global.addEventListener) {
-      global.addEventListener('unhandledrejection', unhandledRejectionHandler);
+      global.addEventListener("unhandledrejection", unhandledRejectionHandler);
     }
 
     // Cleanup
     return () => {
       if (global.removeEventListener) {
-        global.removeEventListener('unhandledrejection', unhandledRejectionHandler);
+        global.removeEventListener(
+          "unhandledrejection",
+          unhandledRejectionHandler
+        );
       }
     };
   }, []);
 
-  return (
-    // Your existing app component structure
-    // ...
-  );
+  return props.children;
+}
+
+// If registerRootComponent is available, use it (important for Expo)
+if (registerRootComponent) {
+  // This helps with Expo Router initialization
+  registerRootComponent(App);
 }

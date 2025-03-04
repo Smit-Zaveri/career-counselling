@@ -97,7 +97,6 @@ const SavedJobs = () => {
       job={item}
       handleNavigate={() => handleJobPress(item.jobId)}
       handleUnsave={() => handleUnsaveJob(item.jobId, item.id)}
-      showUnsaveButton={true}
       isRemoving={item.removing}
     />
   );
@@ -180,6 +179,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.lightWhite,
+    marginBottom: 65,
   },
   header: {
     paddingTop: Platform.OS === "android" ? StatusBar.currentHeight + 10 : 10,
@@ -193,16 +193,16 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 16,
     ...Platform.select({
-        ios: {
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 3 },
-          shadowOpacity: 0.2,
-          shadowRadius: 5,
-        },
-        android: {
-          elevation: 2,
-        },
-      }),
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.2,
+        shadowRadius: 5,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
   backButton: {
     width: 40,

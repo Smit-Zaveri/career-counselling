@@ -1,3 +1,6 @@
+// Import polyfills first to ensure they're loaded before Firebase
+import "./polyfills";
+
 import { initializeApp, getApps, getApp } from "firebase/app";
 import {
   getFirestore,

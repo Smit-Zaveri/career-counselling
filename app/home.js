@@ -26,6 +26,7 @@ import RecommendedJobs from "../components/home/recommendedJobs/RecommendedJobs"
 import CareerGrowth from "../components/home/careerGrowth/CareerGrowth";
 import CommunityHighlights from "../components/home/communityHighlights/CommunityHighlights";
 import ActivitySummary from "../components/home/activitySummary/ActivitySummary";
+import PopularJobs from "../components/home/popularJobs/PopularJobs";
 
 const { width } = Dimensions.get("window");
 
@@ -149,8 +150,8 @@ const Home = () => {
           {/* Quick Actions Section */}
           <QuickActions router={router} />
 
-          {/* Recommended Jobs Section */}
-          <RecommendedJobs router={router} />
+          {/* Popular Jobs Section */}
+          <PopularJobs router={router} />
 
           {/* Career Growth Section */}
           <CareerGrowth router={router} />

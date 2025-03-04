@@ -1,67 +1,164 @@
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
-  FlatList,
-  TouchableOpacity,
   SafeAreaView,
-  StatusBar,
+  FlatList,
   ActivityIndicator,
   StyleSheet,
-  RefreshControl,
+  TouchableOpacity,
 } from "react-native";
-import { useSearchParams, Stack, useRouter } from "expo-router";
+import { useLocalSearchParams, Stack, useRouter } from "expo-router";
+import { COLORS, SIZES, FONT } from "../../constants";
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
-import { COLORS, SIZES } from "../../constants";
-import { getJobsByCategory } from "../../firebase/jobServices";
+import { collection, query, where, getDocs, limit } from "firebase/firestore";
+import { db } from "../../firebase/config";
 import JobCard from "../../components/common/cards/JobCard";
 
 const CategoryJobs = () => {
-  const params = useSearchParams();
-  const { id: categoryId, categoryName } = params;
   const router = useRouter();
+  const params = useLocalSearchParams();
+  const categoryId = params?.id;
+  const categoryName = params?.name || "Category Jobs";
 
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
-
-  const fetchJobs = useCallback(async () => {
-    try {
-      setLoading(true);
-      const jobsList = await getJobsByCategory(categoryId);
-      setJobs(jobsList);
-      setError(null);
-    } catch (err) {
-      console.error("Error fetching category jobs:", err);
-      setError("Failed to load jobs. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  }, [categoryId]);
+  const [debugInfo, setDebugInfo] = useState(null);
 
   useEffect(() => {
-    fetchJobs();
-  }, [fetchJobs]);
+    fetchJobsByCategory();
+  }, [categoryId]);
 
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await fetchJobs();
-    setRefreshing(false);
-  }, [fetchJobs]);
-
-  const handleJobPress = (jobId) => {
-    router.push(`/job-details/${jobId}`);
-  };
-
-  const handleUnsave = async (jobId) => {
+  const fetchJobsByCategory = async () => {
     try {
-      await unsaveJob(jobId);
-      setJobs((prevJobs) => prevJobs.filter((job) => job.job_id !== jobId));
-    } catch (error) {
-      console.error("Error unsaving job:", error);
-      Alert.alert("Error", "Failed to unsave job. Please try again.");
+      setLoading(true);
+      setError(null);
+      setDebugInfo(null);
+
+      // Validate categoryId before using it in query
+      if (!categoryId) {
+        setError("Missing category ID");
+        setLoading(false);
+        return;
+      }
+
+      console.log(`Fetching jobs for category ID: ${categoryId}`);
+
+      // First try to get all jobs to see what's available
+      const jobsRef = collection(db, "jobs");
+      const allJobsSnapshot = await getDocs(query(jobsRef, limit(5)));
+
+      let sampleJob = null;
+      if (!allJobsSnapshot.empty) {
+        sampleJob = allJobsSnapshot.docs[0].data();
+        console.log("Sample job fields:", Object.keys(sampleJob));
+
+        // Record debug info
+        setDebugInfo({
+          sampleJobFields: Object.keys(sampleJob),
+          categoryIdType: typeof categoryId,
+          categoryIdValue: categoryId,
+        });
+      }
+
+      // Try different field names that might contain category information
+      const possibleCategoryFields = [
+        "job_category",
+        "category",
+        "job_category_id",
+        "categoryId",
+        "jobCategory",
+      ];
+
+      let jobsFound = false;
+      let jobsData = [];
+
+      for (const fieldName of possibleCategoryFields) {
+        try {
+          console.log(`Trying field name: ${fieldName}`);
+
+          // Try string comparison
+          const stringQuery = query(
+            jobsRef,
+            where(fieldName, "==", categoryId),
+            limit(20)
+          );
+
+          const querySnapshot = await getDocs(stringQuery);
+
+          if (!querySnapshot.empty) {
+            querySnapshot.forEach((doc) => {
+              jobsData.push({ id: doc.id, ...doc.data() });
+            });
+
+            console.log(
+              `Found ${jobsData.length} jobs using field ${fieldName}`
+            );
+            jobsFound = true;
+            break;
+          }
+
+          // If string comparison failed, try numeric comparison if categoryId looks like a number
+          if (!isNaN(Number(categoryId))) {
+            const numQuery = query(
+              jobsRef,
+              where(fieldName, "==", Number(categoryId)),
+              limit(20)
+            );
+
+            const numQuerySnapshot = await getDocs(numQuery);
+
+            if (!numQuerySnapshot.empty) {
+              numQuerySnapshot.forEach((doc) => {
+                jobsData.push({ id: doc.id, ...doc.data() });
+              });
+
+              console.log(
+                `Found ${jobsData.length} jobs using numeric field ${fieldName}`
+              );
+              jobsFound = true;
+              break;
+            }
+          }
+        } catch (fieldError) {
+          console.log(`Error with field ${fieldName}:`, fieldError.message);
+        }
+      }
+
+      // If no specific category jobs found, fall back to a simple query that might work
+      if (!jobsFound) {
+        // Try a simple query to get any jobs, then filter client-side
+        const simpleSnapshot = await getDocs(query(jobsRef, limit(50)));
+
+        // Client-side filtering - check all job fields for the category value
+        simpleSnapshot.forEach((doc) => {
+          const jobData = doc.data();
+
+          // Check if any field contains the category ID
+          const containsCategory = Object.values(jobData).some((value) => {
+            if (typeof value === "string") {
+              return value.toLowerCase().includes(categoryId.toLowerCase());
+            }
+            return false;
+          });
+
+          if (containsCategory) {
+            jobsData.push({ id: doc.id, ...jobData });
+          }
+        });
+      }
+
+      setJobs(jobsData);
+
+      if (jobsData.length === 0) {
+        setError(`No jobs found in category: ${categoryName}`);
+      }
+    } catch (err) {
+      console.error("Error fetching jobs by category:", err);
+      setError(`Failed to load jobs: ${err.message}`);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -69,78 +166,79 @@ const CategoryJobs = () => {
     <SafeAreaView style={styles.container}>
       <Stack.Screen
         options={{
-          headerShown: false,
+          headerTitle: categoryName,
+          headerTintColor: COLORS.primary,
+          headerBackVisible: true,
+          headerStyle: {
+            backgroundColor: COLORS.lightWhite,
+          },
         }}
       />
 
-      {/* Header */}
-      <LinearGradient
-        colors={[COLORS.primary, "#396AFC"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={styles.header}
-      >
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
-          <Ionicons name="arrow-back" size={24} color={COLORS.white} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-          {categoryName || "Category Jobs"}
-        </Text>
-        <View style={styles.placeholder} />
-      </LinearGradient>
-
-      {/* Content */}
-      {loading && !refreshing ? (
-        <View style={styles.centered}>
+      {loading ? (
+        <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.primary} />
           <Text style={styles.loadingText}>Loading jobs...</Text>
         </View>
       ) : error ? (
-        <View style={styles.centered}>
-          <Ionicons name="alert-circle" size={50} color={COLORS.red} />
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle" size={60} color={COLORS.red} />
           <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={fetchJobs}>
-            <Text style={styles.retryText}>Try Again</Text>
+
+          {debugInfo && (
+            <View style={styles.debugContainer}>
+              <Text style={styles.debugTitle}>Debug Information:</Text>
+              <Text style={styles.debugText}>
+                Category ID: {debugInfo.categoryIdValue}
+              </Text>
+              <Text style={styles.debugText}>
+                Type: {debugInfo.categoryIdType}
+              </Text>
+              {debugInfo.sampleJobFields && (
+                <Text style={styles.debugText}>
+                  Available fields: {debugInfo.sampleJobFields.join(", ")}
+                </Text>
+              )}
+            </View>
+          )}
+
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={fetchJobsByCategory}
+          >
+            <Text style={styles.retryText}>Retry</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.browseButton, { marginTop: SIZES.small }]}
+            onPress={() => router.push("/job")}
+          >
+            <Text style={styles.browseText}>Browse All Jobs</Text>
           </TouchableOpacity>
         </View>
       ) : jobs.length === 0 ? (
-        <View style={styles.centered}>
-          <Ionicons name="business-outline" size={70} color={COLORS.gray} />
-          <Text style={styles.noJobsTitle}>No jobs found</Text>
-          <Text style={styles.noJobsText}>
-            No jobs available in this category at the moment.
-          </Text>
+        <View style={styles.emptyContainer}>
+          <Ionicons name="document-outline" size={60} color={COLORS.gray} />
+          <Text style={styles.emptyText}>No jobs found in this category</Text>
           <TouchableOpacity
             style={styles.browseButton}
             onPress={() => router.push("/job")}
           >
-            <Text style={styles.browseButtonText}>Browse All Jobs</Text>
+            <Text style={styles.browseText}>Browse All Jobs</Text>
           </TouchableOpacity>
         </View>
       ) : (
         <FlatList
           data={jobs}
-          keyExtractor={(item) => item.job_id}
           renderItem={({ item }) => (
             <JobCard
               job={item}
-              handleNavigate={() => handleJobPress(item.job_id)}
-              handleUnsave={() => handleUnsave(item.job_id)}
-              showUnsaveButton={item.isSaved}
+              handleNavigate={() => router.push(`/job-details/${item.id}`)}
             />
           )}
-          contentContainerStyle={styles.listContainer}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.jobsList}
           showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={[COLORS.primary]}
-            />
-          }
         />
       )}
     </SafeAreaView>
@@ -152,100 +250,88 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.lightWhite,
   },
-  header: {
-    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight + 10 : 10,
-    paddingBottom: 15,
-
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    ...Platform.select({
-        ios: {
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 3 },
-          shadowOpacity: 0.2,
-          shadowRadius: 5,
-        },
-        android: {
-          elevation: 2,
-        },
-      }),
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  loadingContainer: {
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
   },
-  headerTitle: {
-    fontSize: SIZES.large,
-    color: COLORS.white,
-    fontWeight: "bold",
+  loadingText: {
+    marginTop: SIZES.medium,
+    color: COLORS.primary,
+    fontFamily: FONT.medium,
   },
-  placeholder: {
-    width: 40,
-  },
-  centered: {
+  errorContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     padding: SIZES.large,
   },
-  loadingText: {
-    marginTop: SIZES.medium,
-    color: COLORS.secondary,
-    fontSize: SIZES.medium,
-  },
   errorText: {
-    marginTop: SIZES.medium,
-    color: COLORS.red,
-    fontSize: SIZES.medium,
+    marginTop: SIZES.small,
     textAlign: "center",
+    color: COLORS.secondary,
+    fontFamily: FONT.medium,
+    marginBottom: SIZES.medium,
+  },
+  debugContainer: {
+    backgroundColor: COLORS.lightWhite,
+    padding: SIZES.medium,
+    borderRadius: SIZES.small,
+    marginVertical: SIZES.medium,
+    width: "100%",
+    borderWidth: 1,
+    borderColor: COLORS.gray2,
+  },
+  debugTitle: {
+    fontFamily: FONT.bold,
+    color: COLORS.tertiary,
+    marginBottom: SIZES.small,
+  },
+  debugText: {
+    fontFamily: FONT.regular,
+    color: COLORS.gray,
+    fontSize: SIZES.small + 2,
+    marginBottom: 2,
   },
   retryButton: {
     marginTop: SIZES.medium,
     backgroundColor: COLORS.primary,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
+    paddingVertical: SIZES.small,
+    paddingHorizontal: SIZES.medium,
+    borderRadius: SIZES.small,
   },
   retryText: {
     color: COLORS.white,
-    fontSize: SIZES.medium,
-    fontWeight: "500",
+    fontFamily: FONT.bold,
   },
-  noJobsTitle: {
-    marginTop: SIZES.large,
-    fontSize: SIZES.large,
-    fontWeight: "bold",
-    color: COLORS.secondary,
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: SIZES.large,
   },
-  noJobsText: {
+  emptyText: {
     marginTop: SIZES.small,
-    fontSize: SIZES.medium,
-    color: COLORS.gray,
     textAlign: "center",
+    color: COLORS.secondary,
+    fontFamily: FONT.medium,
     marginBottom: SIZES.medium,
   },
   browseButton: {
     marginTop: SIZES.medium,
-    backgroundColor: COLORS.primary,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
+    backgroundColor: COLORS.secondary,
+    paddingVertical: SIZES.small,
+    paddingHorizontal: SIZES.medium,
+    borderRadius: SIZES.small,
   },
-  browseButtonText: {
+  browseText: {
     color: COLORS.white,
-    fontSize: SIZES.medium,
-    fontWeight: "bold",
+    fontFamily: FONT.bold,
   },
-  listContainer: {
-    padding: SIZES.medium,
+  jobsList: {
+    paddingHorizontal: SIZES.medium,
+
+    gap: SIZES.medium,
   },
 });
 

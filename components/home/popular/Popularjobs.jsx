@@ -11,7 +11,6 @@ import { db } from "../../../firebase/config";
 import { collection, getDocs, query, orderBy, limit } from "firebase/firestore";
 import styles from "./popularjobs.style";
 import { COLORS, SIZES } from "../../../constants";
-import PopularJobCard from "../../common/cards/popular/PopularJobCard";
 import { Ionicons } from "@expo/vector-icons";
 
 const Popularjobs = () => {

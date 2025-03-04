@@ -1,3 +1,4 @@
+import "../firebase/polyfills";
 import React, { useState, useEffect, useCallback } from "react";
 import { View, Text, BackHandler } from "react-native";
 import { Stack, useRouter, usePathname } from "expo-router";
