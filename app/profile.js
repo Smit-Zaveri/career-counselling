@@ -21,6 +21,7 @@ import { signOut } from "firebase/auth";
 import { auth, db } from "../firebase/config";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { doc, getDoc } from "firebase/firestore";
+import { getSavedJobsCount } from "../firebase/jobServices";
 
 import styles from "./style/profileStyle";
 
@@ -65,6 +66,7 @@ const ProfileScreen = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [statsLoading, setStatsLoading] = useState(true);
   const [profileDataLoading, setProfileDataLoading] = useState(true);
+  const [savedJobsCount, setSavedJobsCount] = useState(0);
 
   // Check authentication status on screen focus
   useFocusEffect(
@@ -104,6 +106,7 @@ const ProfileScreen = () => {
     React.useCallback(() => {
       console.log("Profile screen focused, reloading data");
       loadUserData();
+      loadSavedJobsCount();
       return () => {
         // Any cleanup needed
       };
@@ -180,6 +183,17 @@ const ProfileScreen = () => {
       setProfileDataLoading(false);
       setStatsLoading(false);
       setIsLoading(false);
+    }
+  };
+
+  // Add a function to load saved jobs count
+  const loadSavedJobsCount = async () => {
+    try {
+      const count = await getSavedJobsCount();
+      setSavedJobsCount(count);
+      console.log("Saved jobs count:", count);
+    } catch (error) {
+      console.error("Error getting saved jobs count:", error);
     }
   };
 
@@ -261,6 +275,34 @@ const ProfileScreen = () => {
       console.error(`Navigation error to ${screenName}:`, error);
       // Try alternative path format if the first one fails
       router.push(screenName);
+    }
+  };
+
+  const navigateToSavedJobs = () => {
+    if (!isAuthenticated) {
+      router.replace("login");
+      return;
+    }
+
+    console.log("Navigating to saved jobs");
+
+    // Try different navigation approaches to ensure it works
+    try {
+      router.push("SavedJobs"); // First attempt without slash
+    } catch (error) {
+      console.error("First navigation attempt failed:", error);
+      try {
+        router.push("/SavedJobs"); // Second attempt with slash
+      } catch (error2) {
+        console.error("Second navigation attempt failed:", error2);
+        try {
+          // Third attempt using the navigate method if available
+          router.navigate("SavedJobs");
+        } catch (error3) {
+          console.error("All navigation attempts failed:", error3);
+          Alert.alert("Navigation Error", "Could not navigate to Saved Jobs");
+        }
+      }
     }
   };
 
@@ -440,7 +482,11 @@ const ProfileScreen = () => {
 
                 <View style={styles.verticalDivider} />
 
-                <View style={styles.statItem}>
+                <TouchableOpacity
+                  style={styles.statItem}
+                  onPress={navigateToSavedJobs}
+                  activeOpacity={0.7}
+                >
                   <View
                     style={[
                       styles.statIconCircle,
@@ -449,11 +495,9 @@ const ProfileScreen = () => {
                   >
                     <Icon name="bookmark-outline" size={18} color="#0077B6" />
                   </View>
-                  <Text style={styles.statNumber}>
-                    {userData?.savedJobs || 0}
-                  </Text>
+                  <Text style={styles.statNumber}>{savedJobsCount}</Text>
                   <Text style={styles.statLabel}>Saved Jobs</Text>
-                </View>
+                </TouchableOpacity>
 
                 <View style={styles.verticalDivider} />
 

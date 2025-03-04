@@ -110,7 +110,7 @@ export const searchJobs = async (searchQuery) => {
   }
 };
 
-// Get job details
+// Get job details - FIXED
 export const getJobDetails = async (jobId) => {
   try {
     console.log(`Fetching details for job: ${jobId}`);
@@ -119,6 +119,7 @@ export const getJobDetails = async (jobId) => {
     if (jobDoc.exists()) {
       // Check if user has saved this job
       const isSaved = await checkIfJobSaved(jobId);
+      console.log(`Job ${jobId} saved status: ${isSaved}`);
 
       return {
         data: [
@@ -140,39 +141,64 @@ export const getJobDetails = async (jobId) => {
   }
 };
 
-// Check if a job is saved by the current user
+// Check if a job is saved by the current user - FIXED
 export const checkIfJobSaved = async (jobId) => {
   try {
-    if (!auth.currentUser) return false;
+    const user = auth.currentUser;
+    if (!user) return false;
 
-    const userId = auth.currentUser.uid;
-    const userRef = doc(db, "users", userId);
-    const jobRef = doc(userRef, "savedJobs", jobId);
-    const jobDoc = await getDoc(jobRef);
+    const userId = user.uid;
+    const savedJobsRef = collection(db, "saved_jobs");
+    const q = query(
+      savedJobsRef,
+      where("userId", "==", userId),
+      where("jobId", "==", jobId)
+    );
 
-    return jobDoc.exists();
+    const querySnapshot = await getDocs(q);
+    return !querySnapshot.empty; // true if job exists in saved_jobs
   } catch (error) {
     console.error("Error checking if job is saved:", error);
     return false;
   }
 };
 
-// Save a job
+// Save a job - FIXED
 export const saveJob = async (jobData) => {
   try {
-    const auth = getAuth();
-    const user = auth.currentUser;
-
-    if (!user) {
+    if (!auth.currentUser) {
       throw new Error("User not authenticated");
     }
 
+    const userId = auth.currentUser.uid;
+
+    // First check if this job is already saved
+    const alreadySaved = await checkIfJobSaved(jobData.jobId);
+    if (alreadySaved) {
+      console.log("Job already saved");
+      return { success: true, alreadySaved: true };
+    }
+
+    // Create new saved job document
     const savedJobsRef = collection(db, "saved_jobs");
     const docRef = await addDoc(savedJobsRef, {
-      ...jobData,
-      userId: user.uid,
+      jobId: jobData.jobId,
+      job_title: jobData.job_title || "",
+      employer_name: jobData.employer_name || "",
+      employer_logo: jobData.employer_logo || "",
+      job_country: jobData.job_country || "",
+      job_employment_type: jobData.job_employment_type || "",
+      job_apply_link: jobData.job_apply_link || "",
+      userId: userId,
       savedAt: new Date(),
     });
+
+    // Update the user's document to track saved jobs count
+    const userDoc = doc(db, "users", userId);
+    await updateDoc(userDoc, {
+      savedJobs: arrayUnion(jobData.jobId),
+    });
+
     console.log("Job saved successfully with ID:", docRef.id);
     return { success: true, id: docRef.id };
   } catch (error) {
@@ -181,31 +207,61 @@ export const saveJob = async (jobData) => {
   }
 };
 
-// Unsave a job
-export const unsaveJob = async (jobId) => {
+// Unsave a job - IMPROVED ERROR HANDLING
+export const unsaveJob = async (id) => {
   try {
-    const auth = getAuth();
-    const user = auth.currentUser;
-
-    if (!user) {
+    if (!auth.currentUser) {
       throw new Error("User not authenticated");
     }
 
+    const userId = auth.currentUser.uid;
+
+    // Check if the ID is a document ID or a job ID
+    try {
+      // First try to directly delete if it's a document ID
+      const docRef = doc(db, "saved_jobs", id);
+      const docSnap = await getDoc(docRef);
+
+      if (docSnap.exists()) {
+        await deleteDoc(docRef);
+        console.log("Job unsaved using document ID");
+        return { success: true };
+      }
+    } catch (directDeleteError) {
+      console.log("Not a document ID, trying job ID approach");
+      // Continue to the job ID approach
+    }
+
+    // Find by job ID if direct delete didn't work
     const savedJobsRef = collection(db, "saved_jobs");
     const q = query(
       savedJobsRef,
-      where("jobId", "==", jobId),
-      where("userId", "==", user.uid)
+      where("jobId", "==", id),
+      where("userId", "==", userId)
     );
+
     const querySnapshot = await getDocs(q);
 
     if (querySnapshot.empty) {
-      throw new Error("Job not found in saved jobs");
+      console.log("Job not found in saved jobs");
+      return { success: false, error: "Job not found in saved jobs" };
     }
 
-    // Delete the first matching document
-    const docToDelete = querySnapshot.docs[0];
-    await deleteDoc(doc(db, "saved_jobs", docToDelete.id));
+    // Delete all matching documents (should be just one)
+    for (const doc of querySnapshot.docs) {
+      await deleteDoc(doc.ref);
+    }
+
+    // Also remove from user's savedJobs array if it exists
+    try {
+      const userDoc = doc(db, "users", userId);
+      await updateDoc(userDoc, {
+        savedJobs: arrayRemove(id),
+      });
+    } catch (userUpdateError) {
+      // Continue even if user document update fails
+      console.warn("Could not update user document:", userUpdateError);
+    }
 
     console.log("Job unsaved successfully");
     return { success: true };

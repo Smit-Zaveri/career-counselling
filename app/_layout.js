@@ -309,6 +309,12 @@ const Layout = () => {
             headerRight: () => <HeaderRight />,
           }}
         />
+        <Stack.Screen
+          name="SavedJobs"
+          options={{
+            headerShown: false,
+          }}
+        />
       </Stack>
 
       {!shouldHideNavigation() && isAuthenticated && (
