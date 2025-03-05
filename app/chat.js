@@ -555,7 +555,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: SIZES.large,
     fontWeight: "bold",
-    color: COLORS.tertiary,
+    color: COLORS.primary,
   },
   historyButton: {
     padding: SIZES.small,
