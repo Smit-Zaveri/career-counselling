@@ -128,7 +128,7 @@ const Layout = () => {
   };
 
   // Define main screens
-  const mainScreens = ["home", "job", "chat", "community", "profile"];
+  const mainScreens = ["home", "job", "chat", "community", "roadmap"];
 
   // Update previous main screen when navigating between main screens
   useEffect(() => {
@@ -297,6 +297,18 @@ const Layout = () => {
           />
           <Stack.Screen
             name="profile"
+            options={{
+              headerTitle: "Profile",
+              headerTitleStyle: {
+                fontFamily: "DMBold",
+                color: COLORS.primary,
+                fontSize: SIZES.large,
+              },
+              headerRight: () => <HeaderRight />,
+            }}
+          />
+          <Stack.Screen
+            name="roadmap"
             options={{
               headerTitle: "Profile",
               headerTitleStyle: {

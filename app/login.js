@@ -146,7 +146,7 @@ const Login = () => {
                   <Text style={styles.logoText}>CC</Text>
                 </LinearGradient>
               </View>
-              <Text style={styles.companyName}>CarrerCreate</Text>
+              <Text style={styles.companyName}>Career Connect</Text>
               <Text style={styles.companyTagline}>Build Your Future Today</Text>
             </View>
 

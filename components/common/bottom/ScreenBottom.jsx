@@ -18,7 +18,7 @@ const ScreenBottom = ({ activeScreen }) => {
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   // Define the order of screens
-  const screensOrder = ["home", "job", "chat", "community", "profile"];
+  const screensOrder = ["home", "job", "chat", "community", "roadmap"];
   const screenWidth = Dimensions.get("window").width;
   const tabWidth = screenWidth / screensOrder.length;
   const indicatorWidth = 40;
@@ -101,7 +101,7 @@ const ScreenBottom = ({ activeScreen }) => {
         {/* Fixed icon name */}
         {renderIcon("chat", "chatbubbles", "chatbubbles-outline")}
         {renderIcon("community", "people", "people-outline")}
-        {renderIcon("profile", "person", "person-outline")}
+        {renderIcon("roadmap", "map", "map-outline")}
       </View>
     </View>
   );

@@ -114,7 +114,7 @@ const Register = () => {
                   <Text style={styles.logoText}>CC</Text>
                 </LinearGradient>
               </View>
-              <Text style={styles.companyName}>CarrerCreate</Text>
+              <Text style={styles.companyName}>Career Connect</Text>
               <Text style={styles.companyTagline}>Build Your Future Today</Text>
             </View>
 
@@ -227,9 +227,9 @@ const Register = () => {
                   <Text style={styles.loginLink}>Login</Text>
                 </TouchableOpacity>
               </View>
-              <View style={styles.decorationCircle1}></View>
-              <View style={styles.decorationCircle2} />
             </View>
+            <View style={styles.decorationCircle1} />
+              <View style={styles.decorationCircle2} />
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
@@ -282,7 +282,7 @@ const styles = StyleSheet.create({
   },
   companyContainer: {
     alignItems: "center",
-    marginBottom: SIZES.xLarge,
+    marginBottom: SIZES.xLarge * 2,
   },
   logoContainer: {
     marginBottom: SIZES.medium,
