@@ -786,15 +786,15 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 0,
     left: 0, // Changed from -screenWidth to 0
-    width: screenWidth * 0.8, // Increased from 0.75 to 0.8 for better visibility
+    width: screenWidth * 0.7, // Increased from 0.75 to 0.8 for better visibility
     height: "100%",
-    backgroundColor: COLORS.white,
+    backgroundColor: "transparent",
     zIndex: 15, // Increased z-index to ensure it's above the backdrop
-    shadowColor: "#000",
-    shadowOffset: { width: 2, height: 0 },
+    // shadowColor: "#000",
+    // shadowOffset: { width: 2, height: 0 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
-    elevation: 8, // Increased elevation for better shadow on Android
+    // elevation: 8, // Increased elevation for better shadow on Android
   },
 });
 

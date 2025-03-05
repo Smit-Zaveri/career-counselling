@@ -626,7 +626,7 @@ const Job = () => {
             </View>
 
             {/* Popular Jobs or Jobs for Active Tab */}
-            <View style={styles.sectionContainer}>
+            <View style={styles.sectionContainerForJob}>
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>
                   {activeTab === "popular"
@@ -717,7 +717,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.lightWhite,
-    marginBottom: 85,
   },
   headerContainer: {
     padding: SIZES.medium,
@@ -798,6 +797,12 @@ const styles = StyleSheet.create({
   sectionContainer: {
     marginTop: SIZES.large,
     paddingHorizontal: SIZES.medium,
+    marginBottom: 0,
+  },
+  sectionContainerForJob: {
+    marginTop: SIZES.large,
+    paddingHorizontal: SIZES.medium,
+    marginBottom: 80,
   },
   sectionHeader: {
     flexDirection: "row",

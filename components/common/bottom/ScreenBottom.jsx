@@ -6,10 +6,12 @@ import {
   StyleSheet,
   Animated,
   Dimensions,
+  Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { COLORS, SIZES } from "../../../constants";
+import { LinearGradient } from "expo-linear-gradient";
 
 const ScreenBottom = ({ activeScreen }) => {
   const router = useRouter();
@@ -19,7 +21,7 @@ const ScreenBottom = ({ activeScreen }) => {
   const screensOrder = ["home", "job", "chat", "community", "profile"];
   const screenWidth = Dimensions.get("window").width;
   const tabWidth = screenWidth / screensOrder.length;
-  const indicatorWidth = 25;
+  const indicatorWidth = 40;
   const initialIndex = screensOrder.indexOf(activeScreen);
   const initialX = initialIndex * tabWidth + (tabWidth - indicatorWidth) / 2;
   const indicatorTranslateX = useRef(new Animated.Value(initialX)).current;
@@ -44,9 +46,12 @@ const ScreenBottom = ({ activeScreen }) => {
     // Animate sliding indicator to the active tab's center
     const index = screensOrder.indexOf(activeScreen);
     const targetX = index * tabWidth + (tabWidth - indicatorWidth) / 2;
-    Animated.timing(indicatorTranslateX, {
+    Animated.spring(indicatorTranslateX, {
+      // Fixed typo here
       toValue: targetX,
       duration: 300,
+      friction: 10,
+      tension: 60,
       useNativeDriver: true,
     }).start();
   }, [activeScreen]);
@@ -66,8 +71,15 @@ const ScreenBottom = ({ activeScreen }) => {
             router.push(screenName);
           }
         }}
+        activeOpacity={0.7}
       >
-        <Animated.View style={iconStyle}>
+        <Animated.View
+          style={[
+            styles.iconContainer,
+            isActive && styles.activeIconContainer,
+            iconStyle,
+          ]}
+        >
           <Ionicons
             name={isActive ? iconActive : iconInactive}
             size={SIZES.xLarge}
@@ -82,66 +94,75 @@ const ScreenBottom = ({ activeScreen }) => {
   };
 
   return (
-    <View style={styles.container}>
-      {renderIcon("home", "home", "home-outline")}
-      {renderIcon("job", "briefcase", "briefcase-outline")}
-      {renderIcon("chat", "chatbubbles", "chatbubbles-outline")}
-      {renderIcon("community", "people", "people-outline")}
-      {renderIcon("profile", "person", "person-outline")}
-
-      <Animated.View
-        style={[
-          styles.indicator,
-          { transform: [{ translateX: indicatorTranslateX }] },
-        ]}
-      />
+    <View style={styles.outerContainer}>
+      <View style={styles.container}>
+        {renderIcon("home", "home", "home-outline")}
+        {renderIcon("job", "briefcase", "briefcase-outline")}
+        {/* Fixed icon name */}
+        {renderIcon("chat", "chatbubbles", "chatbubbles-outline")}
+        {renderIcon("community", "people", "people-outline")}
+        {renderIcon("profile", "person", "person-outline")}
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  outerContainer: {
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
+    alignItems: "center",
+    paddingBottom: Platform.OS === "ios" ? 20 : 0,
+    backgroundColor: "transparent",
+  },
+  container: {
+    width: "92%",
     height: 75,
-    backgroundColor: "rgba(255,255,255,0.95)",
+    backgroundColor: COLORS.lightWhite,
     flexDirection: "row",
     justifyContent: "space-around",
     alignItems: "center",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderRadius: 24,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: -3 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 8,
-    borderTopWidth: 0.5,
-    borderTopColor: "#e0e0e0",
-    paddingBottom: 10,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 10,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: "rgba(230,230,230,0.5)",
   },
   navItemContainer: {
     alignItems: "center",
     justifyContent: "center",
     flex: 1,
   },
+  iconContainer: {
+    padding: 8,
+    borderRadius: 16,
+  },
+  activeIconContainer: {
+    backgroundColor: "rgba(240,245,255,0.8)",
+  },
   navItemText: {
-    fontSize: 12,
-    marginTop: 4,
+    fontSize: 11,
+    marginTop: 2,
     color: COLORS.gray,
+    fontWeight: "500",
   },
   activeNavText: {
     color: COLORS.primary,
-    fontWeight: "600",
+    fontWeight: "700",
   },
   indicator: {
     position: "absolute",
-    bottom: 10, // Adjust as needed
+    bottom: 8,
     height: 4,
-    width: 25,
+    width: 40,
     backgroundColor: COLORS.primary,
-    borderRadius: 2,
+    borderRadius: 4,
   },
 });
 
