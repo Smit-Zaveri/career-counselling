@@ -15,11 +15,32 @@ import {
   ActivityIndicator,
   SafeAreaView,
   RefreshControl,
+  Dimensions,
+  Animated,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { COLORS, SIZES } from "../constants";
 import { careerGuidanceFlow } from "../utils/aiHelper";
-import { initializeChat, sendMessageToGemini } from "../utils/geminiHelper";
+import {
+  initializeChat,
+  sendMessageToGemini,
+  clearChatContext,
+  sendSingleMessageToGemini,
+} from "../utils/geminiHelper";
 import Markdown from "react-native-markdown-display";
+import { Ionicons } from "@expo/vector-icons";
+import { auth } from "../firebase/config";
+import {
+  createChatSession,
+  saveChatMessage,
+  getChatSessions,
+  getChatById,
+} from "../firebase/config";
+import ChatHistoryList from "../components/chat/ChatHistoryList";
+import { useRouter, usePathname } from "expo-router";
+import { StatusBar } from "expo-status-bar";
 
 const suggestedQuestions = [
   "What skills are most in-demand for software developers?",
@@ -28,27 +49,146 @@ const suggestedQuestions = [
   "How to transition to a tech career?",
 ];
 
+const screenWidth = Dimensions.get("window").width;
+
 const Chat = () => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [currentChatId, setCurrentChatId] = useState(null);
+  const [chatSessions, setChatSessions] = useState([]);
+  const [loadingChats, setLoadingChats] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const scrollViewRef = useRef(null);
+  const slideAnim = useRef(new Animated.Value(-screenWidth)).current;
+  const [errorState, setErrorState] = useState(null);
+  const [emptyChatText, setEmptyChatText] = useState(
+    "Start a new conversation or select from your history"
+  );
 
-  // Initialize a new chat session
-  const startNewChat = useCallback(() => {
-    initializeChat();
-    setMessages([
-      {
+  const userId = auth.currentUser?.uid;
+  const router = useRouter();
+  const pathname = usePathname();
+
+  // Load chat sessions from Firestore
+  const loadChatSessions = useCallback(async () => {
+    if (!userId) {
+      setEmptyChatText("Please log in to use the chat feature");
+      return;
+    }
+
+    try {
+      setLoadingChats(true);
+      setErrorState(null);
+      const sessions = await getChatSessions(userId);
+      setChatSessions(sessions);
+    } catch (error) {
+      console.error("Error loading chat sessions:", error);
+      setErrorState("Failed to load chat history");
+      setChatSessions([]);
+    } finally {
+      setLoadingChats(false);
+    }
+  }, [userId]);
+
+  // Initialize on component mount
+  useEffect(() => {
+    if (userId) {
+      loadChatSessions();
+    }
+    return () => {};
+  }, [userId, loadChatSessions, pathname]);
+
+  // Create a new chat session - modified to use temporary IDs
+  const startNewChat = useCallback(async () => {
+    try {
+      setMessages([]);
+      setIsLoading(true);
+      setErrorState(null);
+
+      // Always start with a temporary chat ID - it will be converted to permanent when a message is sent
+      const chatId = `temp_${Date.now()}`;
+      setCurrentChatId(chatId);
+
+      initializeChat(chatId);
+
+      const welcomeMessage = {
         text: "Hi! I'm your career guidance assistant. How can I help you today?",
         isUser: false,
-      },
-    ]);
-  }, []);
+        timestamp: new Date().toISOString(),
+      };
+
+      setMessages([welcomeMessage]);
+
+      // Don't save welcome message to Firestore yet - it will be saved with the first user message
+
+      // Toggle history panel off when starting a new chat
+      if (showHistory) {
+        toggleHistoryPanel();
+      }
+    } catch (error) {
+      console.error("Error starting new chat:", error);
+      setErrorState("Failed to start a new chat. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [showHistory]);
+
+  // Load a specific chat by ID
+  const loadChat = useCallback(
+    async (chatId) => {
+      if (!userId || !chatId) return;
+
+      try {
+        setIsLoading(true);
+
+        // Clear old chat context and initialize new one
+        clearChatContext(currentChatId);
+        initializeChat(chatId);
+
+        const chatData = await getChatById(userId, chatId);
+        if (chatData && chatData.messages) {
+          setMessages(chatData.messages);
+          setCurrentChatId(chatId);
+
+          // Toggle history panel off after selecting a chat
+          if (showHistory) {
+            toggleHistoryPanel();
+          }
+        }
+      } catch (error) {
+        console.error("Error loading chat:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [userId, currentChatId, showHistory]
+  );
+
+  // Toggle history panel with improved animation logic
+  const toggleHistoryPanel = useCallback(() => {
+    const newShowHistory = !showHistory;
+    setShowHistory(newShowHistory);
+
+    // Animate panel in or out based on newShowHistory (not the old state)
+    Animated.timing(slideAnim, {
+      toValue: newShowHistory ? 0 : -screenWidth,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  }, [showHistory, slideAnim]);
 
   useEffect(() => {
-    startNewChat();
-  }, [startNewChat]);
+    // Start a new chat if we don't have one and there's no history
+    if (!currentChatId && chatSessions.length === 0 && !loadingChats) {
+      startNewChat();
+    }
+    // Load the latest chat if we have history but no current chat
+    else if (!currentChatId && chatSessions.length > 0 && !loadingChats) {
+      loadChat(chatSessions[0].id);
+    }
+  }, [currentChatId, chatSessions, loadingChats, startNewChat, loadChat]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -56,6 +196,7 @@ const Chat = () => {
     setRefreshing(false);
   }, [startNewChat]);
 
+  // Send message - modified to handle temporary chat IDs
   const sendMessage = useCallback(
     async (textParam) => {
       const messageText = textParam || input;
@@ -63,38 +204,106 @@ const Chat = () => {
 
       try {
         setIsLoading(true);
-        setMessages((prev) => [...prev, { text: messageText, isUser: true }]);
+        setErrorState(null);
+
+        // Create a user message object
+        const userMessage = {
+          text: messageText,
+          isUser: true,
+          timestamp: new Date().toISOString(),
+        };
+
+        // Update UI immediately
+        setMessages((prev) => [...prev, userMessage]);
         setInput("");
 
-        let response;
-        try {
-          response = await sendMessageToGemini(messageText);
-          if (!response.success) {
-            throw new Error(response.error || "Gemini API failed");
+        // Use existing chat ID or create a temporary one
+        let chatId = currentChatId || `temp_${Date.now()}`;
+
+        // Save user message to Firestore - this will convert temporary ID to permanent if needed
+        if (userId) {
+          try {
+            const saveResult = await saveChatMessage(
+              userId,
+              chatId,
+              messageText,
+              true
+            );
+
+            // If the chat ID changed (temp converted to permanent), update our state
+            if (saveResult.success && saveResult.chatId !== chatId) {
+              chatId = saveResult.chatId;
+              setCurrentChatId(chatId);
+            }
+          } catch (error) {
+            console.error("Failed to save user message:", error);
+            // Continue anyway as we have the message in UI
           }
-        } catch (error) {
-          console.log("Gemini API failed, falling back to mock:", error);
-          response = await careerGuidanceFlow(messageText);
         }
 
-        setMessages((prev) => [
-          ...prev,
-          { text: response.text, isUser: false },
-        ]);
+        // Get response from Gemini - first try chat method
+        let response;
+        try {
+          response = await sendMessageToGemini(messageText, chatId);
+          if (!response.success) {
+            throw new Error(response.error || "Gemini chat API failed");
+          }
+        } catch (error) {
+          console.log(
+            "Gemini chat API failed, trying single message method:",
+            error
+          );
+          // Try the alternative single message method
+          try {
+            response = await sendSingleMessageToGemini(messageText);
+            if (!response.success) {
+              throw new Error(response.error || "Gemini API failed");
+            }
+          } catch (error2) {
+            console.log(
+              "All Gemini methods failed, falling back to mock:",
+              error2
+            );
+            response = await careerGuidanceFlow(messageText);
+          }
+        }
+
+        // Create assistant message object
+        const assistantMessage = {
+          text: response.text,
+          isUser: false,
+          timestamp: new Date().toISOString(),
+        };
+
+        // Update UI with assistant response
+        setMessages((prev) => [...prev, assistantMessage]);
+
+        // Save assistant response to Firestore
+        if (userId && chatId) {
+          try {
+            await saveChatMessage(userId, chatId, response.text, false);
+            // Refresh chat list to show updated titles
+            loadChatSessions();
+          } catch (error) {
+            console.error("Failed to save assistant message:", error);
+          }
+        }
       } catch (error) {
         console.error("Chat Error:", error);
+        setErrorState("An error occurred. Please try again.");
         setMessages((prev) => [
           ...prev,
           {
             text: "Sorry, I couldn't process your request. Please try again.",
             isUser: false,
+            timestamp: new Date().toISOString(),
           },
         ]);
       } finally {
         setIsLoading(false);
       }
     },
-    [input]
+    [input, currentChatId, userId, loadChatSessions]
   );
 
   useEffect(() => {
@@ -138,11 +347,70 @@ const Chat = () => {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.lightWhite }}>
-      <View style={styles.container}>
+      <StatusBar style="dark" />
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.historyButton}
+          onPress={toggleHistoryPanel}
+        >
+          <Ionicons name="menu" size={24} color={COLORS.primary} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>AI Career Assistant</Text>
+        <TouchableOpacity style={styles.newChatButton} onPress={startNewChat}>
+          <Ionicons
+            name="add-circle-outline"
+            size={24}
+            color={COLORS.primary}
+          />
+        </TouchableOpacity>
+      </View>
+
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
+      >
+        {/* Backdrop overlay when history is shown */}
+        {showHistory && (
+          <TouchableOpacity
+            style={styles.historyBackdrop}
+            activeOpacity={1}
+            onPress={toggleHistoryPanel}
+          />
+        )}
+
+        {/* Chat History Panel with fixed animation */}
+        <Animated.View
+          style={[
+            styles.historyPanel,
+            { transform: [{ translateX: slideAnim }] },
+          ]}
+        >
+          <ChatHistoryList
+            chatSessions={chatSessions}
+            onSelectChat={loadChat}
+            onNewChat={startNewChat}
+            isLoading={loadingChats}
+            currentChatId={currentChatId}
+          />
+        </Animated.View>
+
+        {/* Error Banner */}
+        {errorState && (
+          <View style={styles.errorBanner}>
+            <Ionicons name="alert-circle" size={20} color={COLORS.white} />
+            <Text style={styles.errorText}>{errorState}</Text>
+            <TouchableOpacity onPress={() => setErrorState(null)}>
+              <Ionicons name="close" size={20} color={COLORS.white} />
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Main Chat Area */}
         <ScrollView
           ref={scrollViewRef}
           style={styles.messagesContainer}
-          contentContainerStyle={{ paddingBottom: 20 }}
+          contentContainerStyle={{ paddingBottom: 100 }}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -154,23 +422,55 @@ const Chat = () => {
             />
           }
         >
-          {messages.map((message, index) => (
-            <View
-              key={index.toString()}
-              style={[
-                styles.messageBubble,
-                message.isUser ? styles.userMessage : styles.aiMessage,
-              ]}
-            >
-              {renderMessageContent(message)}
+          {messages.length === 0 && !isLoading ? (
+            <View style={styles.emptyChatContainer}>
+              <Ionicons name="chatbubbles" size={60} color={COLORS.gray2} />
+              <Text style={styles.emptyChatText}>{emptyChatText}</Text>
+              {!userId ? (
+                <TouchableOpacity
+                  style={styles.loginButton}
+                  onPress={() => router.push("login")}
+                >
+                  <Text style={styles.loginButtonText}>Log In</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={styles.startNewChatButton}
+                  onPress={startNewChat}
+                >
+                  <Text style={styles.startNewChatText}>Start a New Chat</Text>
+                </TouchableOpacity>
+              )}
             </View>
-          ))}
+          ) : (
+            messages.map((message, index) => (
+              <View
+                key={index.toString()}
+                style={[
+                  styles.messageBubble,
+                  message.isUser ? styles.userMessage : styles.aiMessage,
+                ]}
+              >
+                {renderMessageContent(message)}
+                {message.timestamp && (
+                  <Text style={styles.messageTime}>
+                    {new Date(message.timestamp).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </Text>
+                )}
+              </View>
+            ))
+          )}
+
           {isLoading && (
             <View style={styles.loadingContainer}>
               <ActivityIndicator color={COLORS.primary} size="small" />
               <Text style={styles.loadingText}>Thinking...</Text>
             </View>
           )}
+
           {messages.length === 1 && (
             <View style={styles.suggestionsContainer}>
               <Text style={styles.suggestionsTitle}>Try asking:</Text>
@@ -202,17 +502,35 @@ const Chat = () => {
             onPress={() => sendMessage()}
             disabled={isLoading}
           >
-            <Text style={styles.sendButtonText}>
-              {isLoading ? "..." : "Send"}
-            </Text>
+            <Ionicons name="send" size={20} color={COLORS.white} />
           </TouchableOpacity>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: SIZES.small,
+    backgroundColor: COLORS.lightWhite,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.gray2,
+  },
+  headerTitle: {
+    fontSize: SIZES.large,
+    fontWeight: "bold",
+    color: COLORS.tertiary,
+  },
+  historyButton: {
+    padding: SIZES.small,
+  },
+  newChatButton: {
+    padding: SIZES.small,
+  },
   container: {
     flex: 1,
     backgroundColor: COLORS.lightWhite,
@@ -242,6 +560,13 @@ const styles = StyleSheet.create({
     fontSize: SIZES.small + 2,
     lineHeight: 20,
   },
+  messageTime: {
+    fontSize: SIZES.small - 2,
+    color: COLORS.gray,
+    alignSelf: "flex-end",
+    marginTop: 4,
+    opacity: 0.7,
+  },
   inputContainer: {
     flexDirection: "row",
     position: "absolute",
@@ -252,20 +577,24 @@ const styles = StyleSheet.create({
     padding: SIZES.medium,
     borderTopWidth: 1,
     borderTopColor: COLORS.gray2,
+    paddingBottom: Platform.OS === "ios" ? SIZES.large : SIZES.medium,
   },
   input: {
     flex: 1,
     backgroundColor: COLORS.white,
     padding: SIZES.small,
-    borderRadius: SIZES.small,
+    borderRadius: SIZES.large,
     marginRight: SIZES.small,
     maxHeight: 100,
+    paddingLeft: SIZES.medium,
   },
   sendButton: {
     backgroundColor: COLORS.primary,
-    padding: SIZES.medium,
-    borderRadius: SIZES.small,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: "center",
+    alignItems: "center",
     alignSelf: "flex-end",
   },
   sendButtonDisabled: {
@@ -362,6 +691,78 @@ const styles = StyleSheet.create({
   markdownEm: {
     fontStyle: "italic",
     color: "black",
+  },
+  errorBanner: {
+    backgroundColor: COLORS.error || "#FF3B30",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 8,
+    paddingHorizontal: SIZES.medium,
+  },
+  errorText: {
+    color: COLORS.white,
+    flex: 1,
+    marginHorizontal: 10,
+  },
+  emptyChatContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: SIZES.large,
+    marginTop: 120,
+  },
+  emptyChatText: {
+    fontSize: SIZES.medium,
+    color: COLORS.gray,
+    textAlign: "center",
+    marginVertical: SIZES.medium,
+  },
+  startNewChatButton: {
+    backgroundColor: COLORS.primary,
+    paddingVertical: SIZES.small,
+    paddingHorizontal: SIZES.large,
+    borderRadius: SIZES.medium,
+    marginTop: SIZES.small,
+  },
+  startNewChatText: {
+    color: COLORS.white,
+    fontWeight: "500",
+  },
+  loginButton: {
+    backgroundColor: COLORS.tertiary || COLORS.primary,
+    paddingVertical: SIZES.small,
+    paddingHorizontal: SIZES.large,
+    borderRadius: SIZES.medium,
+    marginTop: SIZES.small,
+  },
+  loginButtonText: {
+    color: COLORS.white,
+    fontWeight: "500",
+  },
+  historyBackdrop: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    zIndex: 5,
+  },
+
+  historyPanel: {
+    position: "absolute",
+    top: 0,
+    left: 0, // Changed from -screenWidth to 0
+    width: screenWidth * 0.8, // Increased from 0.75 to 0.8 for better visibility
+    height: "100%",
+    backgroundColor: COLORS.white,
+    zIndex: 15, // Increased z-index to ensure it's above the backdrop
+    shadowColor: "#000",
+    shadowOffset: { width: 2, height: 0 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 8, // Increased elevation for better shadow on Android
   },
 });
 
