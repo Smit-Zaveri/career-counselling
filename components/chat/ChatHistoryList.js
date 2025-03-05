@@ -7,6 +7,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   SafeAreaView,
+  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS, SIZES } from "../../constants";
@@ -16,9 +17,25 @@ const ChatHistoryList = ({
   chatSessions,
   onSelectChat,
   onNewChat,
+  onDeleteChat, // Add this prop
   isLoading,
   currentChatId,
 }) => {
+  const confirmDelete = (chatId, chatTitle) => {
+    Alert.alert(
+      "Delete Chat",
+      `Are you sure you want to delete "${chatTitle || "this conversation"}"?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => onDeleteChat(chatId),
+        },
+      ]
+    );
+  };
+
   const renderChatItem = ({ item }) => (
     <TouchableOpacity
       style={[
@@ -41,6 +58,20 @@ const ChatHistoryList = ({
           {formatRelativeTime(item.updatedAt)}
         </Text>
       </View>
+      <TouchableOpacity
+        style={styles.deleteButton}
+        onPress={(e) => {
+          e.stopPropagation();
+          confirmDelete(item.id, item.title);
+        }}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      >
+        <Ionicons
+          name="trash-outline"
+          size={20}
+          color={COLORS.error || "#ff3b30"}
+        />
+      </TouchableOpacity>
     </TouchableOpacity>
   );
 
@@ -177,6 +208,12 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: SIZES.small,
     color: COLORS.gray,
+  },
+  deleteButton: {
+    padding: 8,
+    marginLeft: 4,
+    justifyContent: "center",
+    alignItems: "center",
   },
 });
 

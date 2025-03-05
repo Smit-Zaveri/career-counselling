@@ -21,6 +21,7 @@ import {
   addDoc,
   serverTimestamp,
   setDoc,
+  deleteDoc, // Add this import
 } from "firebase/firestore";
 import {
   getAuth,
@@ -514,6 +515,38 @@ export const getChatById = async (userId, chatId) => {
   } catch (error) {
     console.error("Error getting chat by ID:", error);
     throw error;
+  }
+};
+
+// Add this function to delete chat sessions
+export const deleteChatSession = async (userId, chatId) => {
+  try {
+    if (!userId || !chatId) throw new Error("Missing required parameters");
+
+    // If this is a local chat ID
+    if (chatId.startsWith("local_")) {
+      const storedChats = await AsyncStorage.getItem(`chats_${userId}`);
+      if (storedChats) {
+        const chats = JSON.parse(storedChats);
+        const filteredChats = chats.filter((chat) => chat.id !== chatId);
+        await AsyncStorage.setItem(
+          `chats_${userId}`,
+          JSON.stringify(filteredChats)
+        );
+      }
+      return { success: true };
+    }
+
+    // For Firestore chats
+    if (!db) throw new Error("Database not available");
+
+    const chatDocRef = doc(db, "users", userId, "chats", chatId);
+    await deleteDoc(chatDocRef);
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting chat:", error);
+    return { success: false, error: error.message };
   }
 };
 

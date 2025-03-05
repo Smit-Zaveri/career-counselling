@@ -37,6 +37,7 @@ import {
   saveChatMessage,
   getChatSessions,
   getChatById,
+  deleteChatSession, // Add this import
 } from "../firebase/config";
 import ChatHistoryList from "../components/chat/ChatHistoryList";
 import { useRouter, usePathname } from "expo-router";
@@ -345,6 +346,36 @@ const Chat = () => {
     [markdownStyles]
   );
 
+  // Add the delete handler function
+  const handleDeleteChat = useCallback(
+    async (chatId) => {
+      try {
+        if (!userId) return;
+
+        setIsLoading(true);
+        const result = await deleteChatSession(userId, chatId);
+
+        if (result.success) {
+          // If we're deleting the current chat, start a new one
+          if (currentChatId === chatId) {
+            startNewChat();
+          }
+
+          // Refresh the chat list
+          await loadChatSessions();
+        } else {
+          setErrorState("Failed to delete chat");
+        }
+      } catch (error) {
+        console.error("Error deleting chat:", error);
+        setErrorState("Failed to delete chat");
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [userId, currentChatId, startNewChat, loadChatSessions]
+  );
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.lightWhite }}>
       <StatusBar style="dark" />
@@ -390,6 +421,7 @@ const Chat = () => {
             chatSessions={chatSessions}
             onSelectChat={loadChat}
             onNewChat={startNewChat}
+            onDeleteChat={handleDeleteChat} // Add this prop
             isLoading={loadingChats}
             currentChatId={currentChatId}
           />

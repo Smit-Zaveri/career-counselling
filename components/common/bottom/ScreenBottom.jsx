@@ -1,22 +1,31 @@
+import React, { useRef, useEffect } from "react";
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   Animated,
+  Dimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { COLORS, SIZES } from "../../../constants";
-import { useState, useRef, useEffect } from "react";
 
 const ScreenBottom = ({ activeScreen }) => {
   const router = useRouter();
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
+  // Define the order of screens
+  const screensOrder = ["home", "job", "chat", "community", "profile"];
+  const screenWidth = Dimensions.get("window").width;
+  const tabWidth = screenWidth / screensOrder.length;
+  const indicatorWidth = 25;
+  const initialIndex = screensOrder.indexOf(activeScreen);
+  const initialX = initialIndex * tabWidth + (tabWidth - indicatorWidth) / 2;
+  const indicatorTranslateX = useRef(new Animated.Value(initialX)).current;
+
   useEffect(() => {
-    // Create a subtle pulse animation for the active icon
+    // Pulse animation for the active icon
     Animated.sequence([
       Animated.timing(scaleAnim, {
         toValue: 1.2,
@@ -31,13 +40,26 @@ const ScreenBottom = ({ activeScreen }) => {
     ]).start();
   }, [activeScreen]);
 
+  useEffect(() => {
+    // Animate sliding indicator to the active tab's center
+    const index = screensOrder.indexOf(activeScreen);
+    const targetX = index * tabWidth + (tabWidth - indicatorWidth) / 2;
+    Animated.timing(indicatorTranslateX, {
+      toValue: targetX,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  }, [activeScreen]);
+
   const renderIcon = (screenName, iconActive, iconInactive) => {
     const isActive = activeScreen === screenName;
     const iconColor = isActive ? COLORS.primary : COLORS.gray;
+    // Apply the pulse animation only on the active icon
     const iconStyle = isActive ? { transform: [{ scale: scaleAnim }] } : {};
 
     return (
       <TouchableOpacity
+        key={screenName}
         style={styles.navItemContainer}
         onPress={() => {
           if (screenName !== activeScreen) {
@@ -52,7 +74,6 @@ const ScreenBottom = ({ activeScreen }) => {
             color={iconColor}
           />
         </Animated.View>
-        {isActive && <View style={styles.activeIndicator} />}
         <Text style={[styles.navItemText, isActive && styles.activeNavText]}>
           {screenName.charAt(0).toUpperCase() + screenName.slice(1)}
         </Text>
@@ -67,6 +88,13 @@ const ScreenBottom = ({ activeScreen }) => {
       {renderIcon("chat", "chatbubbles", "chatbubbles-outline")}
       {renderIcon("community", "people", "people-outline")}
       {renderIcon("profile", "person", "person-outline")}
+
+      <Animated.View
+        style={[
+          styles.indicator,
+          { transform: [{ translateX: indicatorTranslateX }] },
+        ]}
+      />
     </View>
   );
 };
@@ -78,17 +106,19 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 75,
-    backgroundColor: COLORS.white,
+    backgroundColor: "rgba(255,255,255,0.95)",
     flexDirection: "row",
     justifyContent: "space-around",
     alignItems: "center",
-    elevation: 10,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: -2 },
+    shadowOffset: { width: 0, height: -3 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.gray2,
+    shadowRadius: 6,
+    elevation: 8,
+    borderTopWidth: 0.5,
+    borderTopColor: "#e0e0e0",
     paddingBottom: 10,
   },
   navItemContainer: {
@@ -103,15 +133,15 @@ const styles = StyleSheet.create({
   },
   activeNavText: {
     color: COLORS.primary,
-    fontWeight: "500",
+    fontWeight: "600",
   },
-  activeIndicator: {
-    height: 3,
-    width: 20,
-    backgroundColor: COLORS.primary,
-    borderRadius: 10,
+  indicator: {
     position: "absolute",
-    top: -10,
+    bottom: 10, // Adjust as needed
+    height: 4,
+    width: 25,
+    backgroundColor: COLORS.primary,
+    borderRadius: 2,
   },
 });
 
