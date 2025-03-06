@@ -119,4 +119,13 @@ export const ProgressStore = {
       return { completedItems: [], progress: 0 };
     }
   },
+
+  // Add a clearCache method to force fresh data loading
+  clearCache: async function () {
+    // If you're using any in-memory cache, clear it here
+    // This ensures we read fresh data from AsyncStorage
+    console.log("Clearing ProgressStore cache");
+    // You might not need to do anything if you don't have a cache,
+    // but this method provides a hook for refreshing
+  },
 };

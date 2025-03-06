@@ -45,15 +45,18 @@ const Roadmap = () => {
 
   const loadTechnologiesWithProgress = async () => {
     try {
+      console.log("Loading technologies with progress...");
       // Create a copy of technologies with updated progress information
       const updatedTechnologies = await Promise.all(
         technologies.map(async (tech) => {
           const { progress } = await ProgressStore.getTechnologyProgress(
             tech.id
           );
+          console.log(`Technology ${tech.id} progress: ${progress}`);
           return { ...tech, currentProgress: progress };
         })
       );
+      console.log("Finished loading technologies with progress");
       setTechnologiesData(updatedTechnologies);
     } catch (error) {
       console.error("Error loading technologies with progress:", error);
@@ -62,12 +65,17 @@ const Roadmap = () => {
 
   const onRefresh = async () => {
     setRefreshing(true);
-
-    // Reload all data
-    await loadTechnologiesWithProgress();
-
-    // Finish refreshing
-    setRefreshing(false);
+    try {
+      // Force reload progress data from storage
+      await ProgressStore.clearCache(); // Add this method to your ProgressStore
+      // Reload all data
+      await loadTechnologiesWithProgress();
+    } catch (error) {
+      console.error("Error refreshing data:", error);
+    } finally {
+      // Finish refreshing
+      setRefreshing(false);
+    }
   };
 
   const handleTechnologyPress = (tech) => {
@@ -101,14 +109,14 @@ const Roadmap = () => {
               <Text style={styles.statLabel}>Paths</Text>
             </View>
             <View style={styles.statDivider} />
-              <View style={styles.statItem}>
-                <Text style={styles.statNumber}>120+</Text>
-                <Text style={styles.statLabel}>Resources</Text>
-              </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>120+</Text>
+              <Text style={styles.statLabel}>Resources</Text>
+            </View>
             <View style={styles.statDivider} />
-                <View style={styles.statItem}>
-                  <Text style={styles.statNumber}>10K+</Text>
-                  <Text style={styles.statLabel}>Learners</Text>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>10K+</Text>
+              <Text style={styles.statLabel}>Learners</Text>
             </View>
           </View>
         </View>

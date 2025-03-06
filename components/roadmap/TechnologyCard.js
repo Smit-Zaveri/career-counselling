@@ -11,23 +11,28 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS, SIZES, FONT, SHADOWS } from "../../constants";
 import { ProgressStore } from "../../utils/progressStore";
+import { color } from "react-native-reanimated";
 
 const TechnologyCard = ({ technology, onPress, index }) => {
-  const [progress, setProgress] = useState(0);
+  const [progress, setProgress] = useState(technology.currentProgress || 0);
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const cardOpacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(30)).current;
 
   useEffect(() => {
-    // Load actual saved progress
-    const loadProgress = async () => {
-      const { progress } = await ProgressStore.getTechnologyProgress(
-        technology.id
-      );
-      setProgress(progress);
-    };
-
-    loadProgress();
+    // If currentProgress is passed from parent, use it
+    if (technology.currentProgress !== undefined) {
+      setProgress(technology.currentProgress);
+    } else {
+      // Otherwise load it (fallback)
+      const loadProgress = async () => {
+        const { progress } = await ProgressStore.getTechnologyProgress(
+          technology.id
+        );
+        setProgress(progress);
+      };
+      loadProgress();
+    }
 
     Animated.parallel([
       Animated.timing(cardOpacity, {
@@ -43,7 +48,7 @@ const TechnologyCard = ({ technology, onPress, index }) => {
         useNativeDriver: true,
       }),
     ]).start();
-  }, []);
+  }, [technology]); // Add technology as dependency so it updates when technology changes
 
   const handlePressIn = () => {
     Animated.spring(scaleAnim, {
@@ -97,15 +102,6 @@ const TechnologyCard = ({ technology, onPress, index }) => {
                 style={styles.image}
                 resizeMode="contain"
               />
-              {isCompleted && (
-                <View style={styles.completedBadge}>
-                  <Ionicons
-                    name="checkmark-circle"
-                    size={16}
-                    color={COLORS.white}
-                  />
-                </View>
-              )}
             </View>
 
             <View style={styles.textSection}>
@@ -119,7 +115,15 @@ const TechnologyCard = ({ technology, onPress, index }) => {
               </Text>
 
               <View style={styles.progressContainer}>
-                <View style={[styles.progressBar, { width: `${progress}%` }]} />
+                <View
+                  style={[
+                    styles.progressBar,
+                    {
+                      width: `${progress}%`,
+                      ...(isCompleted && { backgroundColor: "green" }),
+                    },
+                  ]}
+                />
                 <Text style={styles.progressText}>{progress}%</Text>
               </View>
             </View>
@@ -158,12 +162,11 @@ const styles = StyleSheet.create({
     margin: SIZES.medium / 2,
     borderRadius: SIZES.large,
     overflow: "hidden",
-    ...SHADOWS.medium,
     shadowColor: COLORS.black,
     shadowOffset: { width: 0, height: 5 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
-    elevation: 8,
+    height: 250,
   },
   touchable: {
     flex: 1,
@@ -227,7 +230,7 @@ const styles = StyleSheet.create({
     height: 6,
     backgroundColor: "rgba(255,255,255,0.2)",
     borderRadius: 3,
-    marginTop: SIZES.small,
+    marginTop: SIZES.xSmall,
     marginBottom: 4,
     position: "relative",
   },
@@ -261,6 +264,7 @@ const styles = StyleSheet.create({
   },
   completedBadge: {
     backgroundColor: "#4CAF50",
+    borderRadius: SIZES.small,
   },
   badgeText: {
     fontFamily: FONT.medium,
