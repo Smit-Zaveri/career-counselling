@@ -1,356 +1,297 @@
-import React, { useRef, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
-  StyleSheet,
   TouchableOpacity,
+  StyleSheet,
   Animated,
-  Easing,
-  Dimensions,
-  Platform,
-  PixelRatio,
+  Alert,
 } from "react-native";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
-import { COLORS, FONT, SIZES, SHADOWS } from "../../constants";
+import { Ionicons } from "@expo/vector-icons";
+import { COLORS, SIZES, FONT, SHADOWS } from "../../constants";
+import { ProgressStore } from "../../utils/progressStore";
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+const RoadmapFlow = ({
+  roadmapItems,
+  onItemPress,
+  techId,
+  onProgressUpdate,
+}) => {
+  const [completedItems, setCompletedItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [progress, setProgress] = useState(0);
 
-// Scale factor for responsive sizing (based on standard iPhone width)
-const scale = SCREEN_WIDTH / 375;
-const normalize = (size) => {
-  const newSize = size * scale;
-  if (Platform.OS === "ios") {
-    return Math.round(PixelRatio.roundToNearestPixel(newSize));
-  }
-  return Math.round(PixelRatio.roundToNearestPixel(newSize)) - 2;
-};
-
-const RoadmapFlow = ({ roadmapItems, onItemPress }) => {
-  // Animation references for each item
-  const animatedValues = useRef(
-    roadmapItems.map(() => new Animated.Value(0))
-  ).current;
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-
-  // Run animations when component mounts
   useEffect(() => {
-    // Fade in the entire component
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 800,
-      useNativeDriver: true,
-    }).start();
-
-    // Animate each item with a stagger effect
-    const animations = animatedValues.map((anim, index) => {
-      return Animated.timing(anim, {
-        toValue: 1,
-        duration: 600,
-        delay: 120 * index,
-        easing: Easing.bezier(0.25, 0.1, 0.25, 1),
-        useNativeDriver: true,
-      });
-    });
-
-    Animated.stagger(80, animations).start();
+    loadProgress();
   }, []);
 
-  // This connector doesn't animate height, only opacity and scale
-  const renderConnector = (index) => {
-    if (index < roadmapItems.length - 1) {
-      const nextNodeAppeared = animatedValues[index + 1];
-
-      return (
-        <View style={styles.connectorContainer}>
-          <View style={styles.connectorLine} />
-          <Animated.View
-            style={{
-              opacity: nextNodeAppeared,
-              transform: [{ scale: nextNodeAppeared }],
-            }}
-          >
-            <MaterialCommunityIcons
-              name="chevron-down-circle"
-              size={normalize(24)}
-              color={COLORS.primary}
-            />
-          </Animated.View>
-        </View>
-      );
+  useEffect(() => {
+    if (onProgressUpdate && !loading) {
+      onProgressUpdate(progress);
     }
-    return null;
+  }, [progress, onProgressUpdate, loading]);
+
+  const loadProgress = async () => {
+    setLoading(true);
+    const { completedItems, progress } =
+      await ProgressStore.getTechnologyProgress(techId);
+    setCompletedItems(completedItems);
+    setProgress(progress);
+    setLoading(false);
+  };
+
+  const handleToggleCompletion = async (itemId) => {
+    const result = await ProgressStore.toggleItemCompletion(
+      techId,
+      itemId,
+      roadmapItems.length
+    );
+
+    setCompletedItems(result.completedItems);
+    setProgress(result.progress);
+  };
+
+  const handleResetProgress = async () => {
+    await ProgressStore.resetTechnologyProgress(techId);
+    await loadProgress();
+  };
+
+  const renderRoadmapItem = (item, index) => {
+    const isCompleted = completedItems.includes(item.id);
+    const isFirst = index === 0;
+    const isLast = index === roadmapItems.length - 1;
+
+    return (
+      <View key={item.id} style={styles.itemContainer}>
+        {!isFirst && <View style={styles.connector} />}
+
+        <View style={styles.itemContent}>
+          <TouchableOpacity
+            style={[styles.checkbox, isCompleted && styles.checkboxCompleted]}
+            onPress={() => handleToggleCompletion(item.id)}
+            activeOpacity={0.7}
+          >
+            {isCompleted && (
+              <Ionicons name="checkmark" size={20} color={COLORS.white} />
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.itemCard, isCompleted && styles.itemCardCompleted]}
+            onPress={() => onItemPress(item)}
+            activeOpacity={0.8}
+          >
+            <Text
+              style={[
+                styles.itemTitle,
+                isCompleted && styles.itemTitleCompleted,
+              ]}
+            >
+              {item.title}
+            </Text>
+            <Text style={styles.itemSubtitle}>
+              {item.subtitle || "Learn this topic"}
+            </Text>
+
+            {isCompleted && (
+              <View style={styles.completedBanner}>
+                <Text style={styles.completedText}>COMPLETED</Text>
+              </View>
+            )}
+
+            <View style={styles.itemFooter}>
+              <View style={styles.difficultyContainer}>
+                <Text style={styles.difficultyLabel}>
+                  {item.difficulty || "Beginner"}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={COLORS.gray} />
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        {!isLast && <View style={styles.connector} />}
+      </View>
+    );
   };
 
   return (
-    <Animated.View
-      style={[styles.container, { opacity: fadeAnim }]}
-      testID="roadmap-flow-container"
-    >
-      {roadmapItems.map((item, index) => {
-        // Create animations for each item
-        const translateY = animatedValues[index].interpolate({
-          inputRange: [0, 1],
-          outputRange: [50, 0],
-          extrapolate: "clamp",
-        });
+    <View style={styles.container}>
+      <View style={styles.progressHeader}>
+        <Text style={styles.progressTitle}>Your Progress</Text>
+        <View style={styles.progressBarContainer}>
+          <View style={[styles.progressBar, { width: `${progress}%` }]} />
+          <Text style={styles.progressText}>{progress}% Complete</Text>
+        </View>
 
-        const scale = animatedValues[index].interpolate({
-          inputRange: [0, 1],
-          outputRange: [0.85, 1],
-          extrapolate: "clamp",
-        });
-
-        const opacity = animatedValues[index].interpolate({
-          inputRange: [0, 1],
-          outputRange: [0, 1],
-          extrapolate: "clamp",
-        });
-
-        // Handle long titles
-        const title = item.title;
-        const subtitle = item.subtitle;
-
-        return (
-          <View
-            key={item.id || index}
-            style={styles.itemOuterContainer}
-            testID={`roadmap-item-${index}`}
-          >
-            <Animated.View
-              style={[
-                styles.itemContainer,
+        <TouchableOpacity
+          style={styles.resetButton}
+          onPress={() => {
+            Alert.alert(
+              "Reset Progress",
+              "Are you sure you want to reset your progress for this technology?",
+              [
+                { text: "Cancel" },
                 {
-                  transform: [{ translateY }, { scale }],
-                  opacity,
+                  text: "Reset",
+                  onPress: handleResetProgress,
+                  style: "destructive",
                 },
-              ]}
-            >
-              <LinearGradient
-                colors={[
-                  item.color || COLORS.primary,
-                  darkenColor(item.color || COLORS.primary, 15),
-                ]}
-                start={{ x: 0.1, y: 0.1 }}
-                end={{ x: 0.9, y: 0.9 }}
-                style={styles.item}
-              >
-                <View style={styles.stepBadge}>
-                  <Text style={styles.stepNumber}>{index + 1}</Text>
-                </View>
+              ]
+            );
+          }}
+        >
+          <Ionicons name="refresh" size={14} color={COLORS.red} />
+          <Text style={styles.resetText}>Reset Progress</Text>
+        </TouchableOpacity>
+      </View>
 
-                <TouchableOpacity
-                  style={styles.itemContent}
-                  onPress={() => onItemPress(item)}
-                  activeOpacity={0.85}
-                  testID={`roadmap-item-button-${index}`}
-                >
-                  <View style={styles.titleContainer}>
-                    <Text
-                      style={styles.itemTitle}
-                      numberOfLines={2}
-                      ellipsizeMode="tail"
-                    >
-                      {title}
-                    </Text>
-                    <Text
-                      style={styles.itemSubtitle}
-                      numberOfLines={2}
-                      ellipsizeMode="tail"
-                    >
-                      {subtitle}
-                    </Text>
-
-                    {/* Tags row for key concepts */}
-                    <View style={styles.tagsContainer}>
-                      {item.concepts &&
-                        item.concepts
-                          .slice(0, SCREEN_WIDTH < 360 ? 1 : 2)
-                          .map((concept, idx) => (
-                            <View key={idx} style={styles.conceptTag}>
-                              <Text
-                                style={styles.tagText}
-                                numberOfLines={1}
-                                ellipsizeMode="tail"
-                              >
-                                {concept.length > (SCREEN_WIDTH < 360 ? 15 : 18)
-                                  ? concept.substring(
-                                      0,
-                                      SCREEN_WIDTH < 360 ? 15 : 18
-                                    ) + "..."
-                                  : concept}
-                              </Text>
-                            </View>
-                          ))}
-                      {item.concepts &&
-                        item.concepts.length > (SCREEN_WIDTH < 360 ? 1 : 2) && (
-                          <View style={styles.moreTag}>
-                            <Text style={styles.moreTagText}>
-                              +
-                              {item.concepts.length -
-                                (SCREEN_WIDTH < 360 ? 1 : 2)}
-                            </Text>
-                          </View>
-                        )}
-                    </View>
-                  </View>
-
-                  <View style={styles.arrowContainer}>
-                    <View style={styles.arrowIconContainer}>
-                      <Ionicons
-                        name="arrow-forward"
-                        size={normalize(18)}
-                        color={COLORS.white}
-                      />
-                    </View>
-                    <Text style={styles.viewDetailsText}>View</Text>
-                  </View>
-                </TouchableOpacity>
-              </LinearGradient>
-            </Animated.View>
-
-            {renderConnector(index)}
-          </View>
-        );
-      })}
-    </Animated.View>
+      <View style={styles.roadmapContainer}>
+        {roadmapItems.map(renderRoadmapItem)}
+      </View>
+    </View>
   );
-};
-
-// Helper function to darken a color by percentage
-const darkenColor = (color, percent) => {
-  if (!color) return COLORS.secondary;
-
-  // Simple darkening - in production you would use a proper color library
-  // This is a placeholder that just returns the original color to avoid errors
-  return color;
 };
 
 const styles = StyleSheet.create({
   container: {
-    alignItems: "center",
     paddingVertical: SIZES.medium,
-    width: "100%",
-    maxWidth: 600, // Maximum width for larger tablets
-    alignSelf: "center",
-    marginBottom: 40,
   },
-  itemOuterContainer: {
-    width: "100%",
-    alignItems: "center",
+  progressHeader: {
+    backgroundColor: COLORS.white,
+    padding: SIZES.medium,
+    borderRadius: SIZES.medium,
+    marginBottom: SIZES.large,
+    ...SHADOWS.medium,
+  },
+  progressTitle: {
+    fontFamily: FONT.bold,
+    fontSize: SIZES.medium,
+    color: COLORS.primary,
     marginBottom: SIZES.small,
   },
-  itemContainer: {
-    width: "100%",
-    alignItems: "center",
-  },
-  item: {
-    width: "92%", // Slightly narrower for better proportions
-    borderRadius: SIZES.medium,
-    ...SHADOWS.large,
+  progressBarContainer: {
+    height: 10,
+    backgroundColor: COLORS.lightWhite,
+    borderRadius: 10,
     overflow: "hidden",
-    position: "relative",
+    marginBottom: SIZES.small,
   },
-  stepBadge: {
-    position: "absolute",
-    top: SIZES.medium,
-    left: SIZES.small,
-    width: normalize(28),
-    height: normalize(28),
-    borderRadius: normalize(14),
-    backgroundColor: "rgba(255,255,255,0.25)",
-    justifyContent: "center",
+  progressBar: {
+    height: "100%",
+    backgroundColor: COLORS.primary,
+    borderRadius: 10,
+  },
+  progressText: {
+    fontFamily: FONT.medium,
+    fontSize: SIZES.small,
+    color: COLORS.gray,
+    alignSelf: "flex-end",
+    marginTop: 5,
+  },
+  roadmapContainer: {
+    paddingVertical: SIZES.small,
+  },
+  itemContainer: {
     alignItems: "center",
-    zIndex: 5,
+    marginBottom: SIZES.medium,
   },
-  stepNumber: {
-    fontFamily: FONT.bold,
-    color: COLORS.white,
-    fontSize: normalize(SIZES.medium - 2),
+  connector: {
+    width: 2,
+    height: 20,
+    backgroundColor: COLORS.gray2,
   },
   itemContent: {
-    padding: SIZES.medium,
     flexDirection: "row",
     alignItems: "center",
-    paddingLeft: normalize(SIZES.large * 2 + 5), // Badge width + padding
-    minHeight: normalize(100), // Minimum height for consistency
+    width: "100%",
   },
-  titleContainer: {
+  checkbox: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.white,
+    marginRight: SIZES.small,
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 1,
+  },
+  checkboxCompleted: {
+    backgroundColor: COLORS.primary,
+  },
+  itemCard: {
     flex: 1,
-    paddingRight: SIZES.small,
+    backgroundColor: COLORS.white,
+    borderRadius: SIZES.medium,
+    padding: SIZES.medium,
+    ...SHADOWS.small,
+    marginLeft: -14, // Overlap checkbox
+    paddingLeft: SIZES.large + 10,
+  },
+  itemCardCompleted: {
+    borderLeftWidth: 5,
+    borderLeftColor: COLORS.primary,
   },
   itemTitle: {
     fontFamily: FONT.bold,
-    fontSize: normalize(SIZES.medium + 1),
-    color: COLORS.white,
-    marginBottom: SIZES.xSmall / 2,
+    fontSize: SIZES.medium,
+    color: COLORS.primary,
+    marginBottom: 4,
+  },
+  itemTitleCompleted: {
+    color: COLORS.tertiary || COLORS.primary,
   },
   itemSubtitle: {
     fontFamily: FONT.regular,
-    fontSize: normalize(SIZES.small + 1),
-    color: "rgba(255,255,255,0.85)",
+    fontSize: SIZES.small,
+    color: COLORS.gray,
     marginBottom: SIZES.small,
   },
-  tagsContainer: {
+  itemFooter: {
     flexDirection: "row",
-    flexWrap: "wrap",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: SIZES.small,
   },
-  conceptTag: {
-    backgroundColor: "rgba(255,255,255,0.2)",
-    borderRadius: SIZES.xSmall,
+  difficultyContainer: {
     paddingVertical: 3,
     paddingHorizontal: 8,
-    marginRight: 6,
-    marginBottom: 4,
-    maxWidth: SCREEN_WIDTH * 0.35, // Ensure tags don't get too wide
+    backgroundColor: COLORS.lightWhite,
+    borderRadius: SIZES.small,
   },
-  tagText: {
-    color: COLORS.white,
+  difficultyLabel: {
     fontFamily: FONT.medium,
-    fontSize: normalize(SIZES.xSmall + 1),
+    fontSize: SIZES.small - 2,
+    color: COLORS.gray,
   },
-  moreTag: {
-    backgroundColor: "rgba(255,255,255,0.3)",
-    borderRadius: SIZES.xSmall,
+  completedBanner: {
+    position: "absolute",
+    top: 10,
+    right: 0,
+    backgroundColor: COLORS.primary,
     paddingVertical: 3,
-    paddingHorizontal: 6,
-    marginBottom: 4,
+    paddingHorizontal: 8,
+    borderTopLeftRadius: SIZES.small,
+    borderBottomLeftRadius: SIZES.small,
   },
-  moreTagText: {
-    color: COLORS.white,
+  completedText: {
     fontFamily: FONT.bold,
-    fontSize: normalize(SIZES.xSmall + 1),
+    fontSize: SIZES.small - 3,
+    color: COLORS.white,
   },
-  arrowContainer: {
+  resetButton: {
+    flexDirection: "row",
     alignItems: "center",
-    // zIndex: 5,
+    alignSelf: "flex-end",
+    marginTop: SIZES.small,
   },
-  arrowIconContainer: {
-    width: normalize(36),
-    height: normalize(36),
-    borderRadius: normalize(18),
-    backgroundColor: "rgba(255,255,255,0.2)",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 4,
-  },
-  viewDetailsText: {
-    color: "rgba(255,255,255,0.9)",
+  resetText: {
     fontFamily: FONT.medium,
-    fontSize: normalize(SIZES.xSmall + 1),
-  },
-  connectorContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    height: normalize(40), // Responsive fixed height
-    width: normalize(26),
-    zIndex: -10,
-  },
-  connectorLine: {
-    width: 2,
-    height: normalize(20), // Responsive fixed height
-    backgroundColor: "rgba(0,0,0,0.08)",
-    marginBottom: -2,
+    fontSize: SIZES.small,
+    color: COLORS.red,
+    marginLeft: 4,
   },
 });
 

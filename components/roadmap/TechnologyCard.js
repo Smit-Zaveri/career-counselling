@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import {
   TouchableOpacity,
   View,
@@ -10,17 +10,25 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS, SIZES, FONT, SHADOWS } from "../../constants";
+import { ProgressStore } from "../../utils/progressStore";
 
 const TechnologyCard = ({ technology, onPress, index }) => {
+  const [progress, setProgress] = useState(0);
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const cardOpacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(30)).current;
 
-  // Random progress between 0-100% for demo purposes
-  const progress = Math.floor(Math.random() * 100);
-  const isStarted = progress > 0;
-
   useEffect(() => {
+    // Load actual saved progress
+    const loadProgress = async () => {
+      const { progress } = await ProgressStore.getTechnologyProgress(
+        technology.id
+      );
+      setProgress(progress);
+    };
+
+    loadProgress();
+
     Animated.parallel([
       Animated.timing(cardOpacity, {
         toValue: 1,
@@ -52,6 +60,9 @@ const TechnologyCard = ({ technology, onPress, index }) => {
       useNativeDriver: true,
     }).start();
   };
+
+  const isStarted = progress > 0;
+  const isCompleted = progress === 100;
 
   return (
     <Animated.View
@@ -86,26 +97,39 @@ const TechnologyCard = ({ technology, onPress, index }) => {
                 style={styles.image}
                 resizeMode="contain"
               />
+              {isCompleted && (
+                <View style={styles.completedBadge}>
+                  <Ionicons
+                    name="checkmark-circle"
+                    size={16}
+                    color={COLORS.white}
+                  />
+                </View>
+              )}
             </View>
 
             <View style={styles.textSection}>
               <Text style={styles.title}>{technology.name}</Text>
               <Text style={styles.subtitle}>
-                {isStarted ? "Continue learning" : "Start learning"}
+                {isCompleted
+                  ? "Completed"
+                  : isStarted
+                  ? "Continue learning"
+                  : "Start learning"}
               </Text>
 
-              {isStarted && (
-                <View style={styles.progressContainer}>
-                  <View
-                    style={[styles.progressBar, { width: `${progress}%` }]}
-                  />
-                  <Text style={styles.progressText}>{progress}%</Text>
-                </View>
-              )}
+              <View style={styles.progressContainer}>
+                <View style={[styles.progressBar, { width: `${progress}%` }]} />
+                <Text style={styles.progressText}>{progress}%</Text>
+              </View>
             </View>
 
             <View style={styles.bottomSection}>
-              {isStarted ? (
+              {isCompleted ? (
+                <View style={[styles.badge, styles.completedBadge]}>
+                  <Text style={styles.badgeText}>Completed</Text>
+                </View>
+              ) : isStarted ? (
                 <View style={styles.badge}>
                   <Text style={styles.badgeText}>In progress</Text>
                 </View>
@@ -168,10 +192,18 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
     shadowRadius: 3,
+    position: "relative",
   },
   image: {
     width: 40,
     height: 40,
+  },
+  checkmarkIcon: {
+    position: "absolute",
+    top: -5,
+    right: -5,
+    backgroundColor: COLORS.primary,
+    borderRadius: 10,
   },
   textSection: {
     marginVertical: SIZES.small,
@@ -226,6 +258,9 @@ const styles = StyleSheet.create({
   },
   newBadge: {
     backgroundColor: "rgba(255,255,255,0.3)",
+  },
+  completedBadge: {
+    backgroundColor: "#4CAF50",
   },
   badgeText: {
     fontFamily: FONT.medium,

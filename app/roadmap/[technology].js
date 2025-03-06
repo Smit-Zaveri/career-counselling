@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -18,6 +18,7 @@ import { BlurView } from "expo-blur";
 import { COLORS, FONT, SIZES, SHADOWS } from "../../constants";
 import { technologies } from "../../constants/roadmapData";
 import RoadmapFlow from "../../components/roadmap/RoadmapFlow";
+import { ProgressStore } from "../../utils/progressStore";
 
 const { width } = Dimensions.get("window");
 const HEADER_HEIGHT = 280;
@@ -26,6 +27,7 @@ const TechnologyRoadmap = () => {
   const { technology } = useLocalSearchParams();
   const router = useRouter();
   const scrollY = new Animated.Value(0);
+  const [progress, setProgress] = useState(0);
 
   // Animated interpolations for header collapse
   const headerHeight = scrollY.interpolate({
@@ -62,6 +64,22 @@ const TechnologyRoadmap = () => {
   });
 
   const tech = technologies.find((t) => t.id === technology);
+
+  // Add callback function that will be passed to RoadmapFlow
+  const handleProgressUpdate = useCallback((updatedProgress) => {
+    setProgress(updatedProgress);
+  }, []);
+
+  useEffect(() => {
+    const loadProgress = async () => {
+      const { progress } = await ProgressStore.getTechnologyProgress(
+        technology
+      );
+      setProgress(progress);
+    };
+
+    loadProgress();
+  }, [technology]);
 
   if (!tech) {
     return (
@@ -104,6 +122,9 @@ const TechnologyRoadmap = () => {
           <Ionicons name="arrow-back" size={22} color={COLORS.white} />
         </TouchableOpacity>
         <Text style={styles.stickyTitle}>{tech.name}</Text>
+        <View style={styles.stickyProgressBadge}>
+          <Text style={styles.stickyProgressText}>{progress}%</Text>
+        </View>
       </Animated.View>
 
       {/* Back Button (visible in the expanded header) */}
@@ -172,6 +193,15 @@ const TechnologyRoadmap = () => {
                   <MaterialIcons name="timer" size={20} color={COLORS.white} />
                   <Text style={styles.statText}>{estimatedTime}+ Hours</Text>
                 </View>
+                <View style={styles.statDivider} />
+                <View style={styles.statItem}>
+                  <MaterialIcons
+                    name="check-circle"
+                    size={20}
+                    color={COLORS.white}
+                  />
+                  <Text style={styles.statText}>{progress}% Done</Text>
+                </View>
               </View>
             </Animated.View>
           </LinearGradient>
@@ -193,6 +223,7 @@ const TechnologyRoadmap = () => {
               roadmapItems={tech.roadmapItems}
               onItemPress={handleRoadmapItemPress}
               techId={tech.id}
+              onProgressUpdate={handleProgressUpdate} // Pass the callback
             />
           </View>
         </View>
@@ -222,12 +253,25 @@ const styles = StyleSheet.create({
   stickyBackButton: {
     padding: 8,
     borderRadius: 40,
-    backgroundColor: "rgba(255, 255, 255, 0.15)",},
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
+  },
   stickyTitle: {
     fontFamily: FONT.bold,
     fontSize: SIZES.large,
     color: COLORS.white,
     marginLeft: 10,
+  },
+  stickyProgressBadge: {
+    marginLeft: "auto",
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+  },
+  stickyProgressText: {
+    fontFamily: FONT.bold,
+    fontSize: SIZES.medium,
+    color: COLORS.white,
   },
   backButton: {
     position: "absolute",
