@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   Animated,
   StatusBar,
   Image,
+  RefreshControl,
 } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
@@ -15,9 +16,12 @@ import { Ionicons } from "@expo/vector-icons";
 import TechnologyCard from "../../components/roadmap/TechnologyCard";
 import { COLORS, SIZES, FONT, SHADOWS } from "../../constants";
 import { technologies } from "../../constants/roadmapData";
+import { ProgressStore } from "../../utils/progressStore";
 
 const Roadmap = () => {
   const router = useRouter();
+  const [refreshing, setRefreshing] = useState(false);
+  const [technologiesData, setTechnologiesData] = useState(technologies);
   const listOpacity = useRef(new Animated.Value(0)).current;
   const headerTranslateY = useRef(new Animated.Value(-50)).current;
 
@@ -34,7 +38,37 @@ const Roadmap = () => {
         useNativeDriver: true,
       }),
     ]).start();
+
+    // Load initial data with progress info
+    loadTechnologiesWithProgress();
   }, []);
+
+  const loadTechnologiesWithProgress = async () => {
+    try {
+      // Create a copy of technologies with updated progress information
+      const updatedTechnologies = await Promise.all(
+        technologies.map(async (tech) => {
+          const { progress } = await ProgressStore.getTechnologyProgress(
+            tech.id
+          );
+          return { ...tech, currentProgress: progress };
+        })
+      );
+      setTechnologiesData(updatedTechnologies);
+    } catch (error) {
+      console.error("Error loading technologies with progress:", error);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+
+    // Reload all data
+    await loadTechnologiesWithProgress();
+
+    // Finish refreshing
+    setRefreshing(false);
+  };
 
   const handleTechnologyPress = (tech) => {
     router.push(`/roadmap/${tech.id}`);
@@ -67,14 +101,14 @@ const Roadmap = () => {
               <Text style={styles.statLabel}>Paths</Text>
             </View>
             <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>120+</Text>
-              <Text style={styles.statLabel}>Resources</Text>
-            </View>
+              <View style={styles.statItem}>
+                <Text style={styles.statNumber}>120+</Text>
+                <Text style={styles.statLabel}>Resources</Text>
+              </View>
             <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>10K+</Text>
-              <Text style={styles.statLabel}>Learners</Text>
+                <View style={styles.statItem}>
+                  <Text style={styles.statNumber}>10K+</Text>
+                  <Text style={styles.statLabel}>Learners</Text>
             </View>
           </View>
         </View>
@@ -102,7 +136,7 @@ const Roadmap = () => {
       />
       <Animated.View style={{ flex: 1, opacity: listOpacity }}>
         <FlatList
-          data={technologies}
+          data={technologiesData}
           renderItem={({ item, index }) => (
             <TechnologyCard
               technology={item}
@@ -115,6 +149,15 @@ const Roadmap = () => {
           numColumns={2}
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={ListHeader}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={COLORS.primary}
+              colors={[COLORS.primary, COLORS.secondary]}
+              progressBackgroundColor="#ffffff"
+            />
+          }
         />
       </Animated.View>
     </SafeAreaView>
@@ -125,7 +168,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.lightWhite,
-    marginBottom: 40, },
+    marginBottom: 40,
+  },
   headerTitle: {
     fontFamily: FONT.bold,
     fontSize: SIZES.large,

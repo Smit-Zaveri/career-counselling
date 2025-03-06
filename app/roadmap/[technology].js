@@ -115,12 +115,12 @@ const TechnologyRoadmap = () => {
       <Animated.View
         style={[styles.stickyHeader, { opacity: stickyHeaderOpacity }]}
       >
-        <TouchableOpacity
+        {/* <TouchableOpacity
           onPress={handleBackPress}
           style={styles.stickyBackButton}
         >
           <Ionicons name="arrow-back" size={22} color={COLORS.white} />
-        </TouchableOpacity>
+        </TouchableOpacity> */}
         <Text style={styles.stickyTitle}>{tech.name}</Text>
         <View style={styles.stickyProgressBadge}>
           <Text style={styles.stickyProgressText}>{progress}%</Text>
@@ -128,7 +128,7 @@ const TechnologyRoadmap = () => {
       </Animated.View>
 
       {/* Back Button (visible in the expanded header) */}
-      <TouchableOpacity
+      {/* <TouchableOpacity
         style={styles.backButton}
         onPress={handleBackPress}
         activeOpacity={0.7}
@@ -136,7 +136,7 @@ const TechnologyRoadmap = () => {
         <BlurView intensity={30} style={styles.blurView}>
           <Ionicons name="arrow-back" size={22} color={COLORS.white} />
         </BlurView>
-      </TouchableOpacity>
+      </TouchableOpacity> */}
 
       <Animated.ScrollView
         showsVerticalScrollIndicator={false}

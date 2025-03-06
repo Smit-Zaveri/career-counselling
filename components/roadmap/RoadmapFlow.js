@@ -458,7 +458,7 @@ const RoadmapFlow = ({
 
 const styles = StyleSheet.create({
   container: {
-    paddingBottom: SIZES.large,
+    paddingBottom: 40,
     width: "100%",
   },
   progressContainer: {

@@ -2,8 +2,7 @@ const technologies = [
   {
     id: "frontend",
     name: "Frontend",
-    iconUrl:
-      "https://upload.wikimedia.org/wikipedia/commons/thumb/6/62/Front-end_development.svg/512px-Front-end_development.svg.png",
+    iconUrl: "https://cdn-icons-png.flaticon.com/512/12419/12419179.png",
     itemsCount: 10,
     roadmapItems: [
       {
@@ -265,8 +264,7 @@ const technologies = [
   {
     id: "backend",
     name: "Backend",
-    iconUrl:
-      "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Server_icon.svg/512px-Server_icon.svg.png",
+    iconUrl: "https://cdn-icons-png.flaticon.com/512/5432/5432506.png",
     itemsCount: 10,
     roadmapItems: [
       {
@@ -513,7 +511,8 @@ const technologies = [
   {
     id: "fullstack",
     name: "Full Stack",
-    iconUrl: "https://via.placeholder.com/512?text=Full+Stack",
+    iconUrl:
+      "https://cdn2.iconfinder.com/data/icons/ux-and-ui-astute-vol-1/512/Full_Stack_Developer-512.png",
     itemsCount: 10,
     roadmapItems: [
       {
@@ -960,7 +959,7 @@ const technologies = [
     id: "react-native",
     name: "React Native",
     iconUrl:
-      "https://d33wubrfki0l68.cloudfront.net/554c3b0e09cf167f0281fda839a5433f2040b349/ecfc9/img/header_logo.svg",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/React-icon.svg/512px-React-icon.svg.png",
     itemsCount: 12,
     roadmapItems: [
       {
@@ -1445,7 +1444,7 @@ const technologies = [
   {
     id: "nodejs",
     name: "Node.js",
-    iconUrl: "https://nodejs.org/static/images/logo.svg",
+    iconUrl: "https://cdn-icons-png.flaticon.com/512/919/919825.png",
     itemsCount: 11,
     roadmapItems: [
       {
@@ -1729,7 +1728,7 @@ const technologies = [
     id: "devops",
     name: "DevOps",
     iconUrl:
-      "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/DevOps_logo.svg/512px-DevOps_logo.svg.png",
+      "https://blog.udemy.com/wp-content/uploads/2021/12/PikPng.com_devops-png_4304308-620x288.png",
     itemsCount: 11,
     roadmapItems: [
       {
@@ -2013,7 +2012,7 @@ const technologies = [
     id: "data-analyst",
     name: "Data Analyst",
     iconUrl:
-      "https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Data_analysis.svg/512px-Data_analysis.svg.png",
+      "https://cdn-icons-png.flaticon.com/512/10872/10872628.png",
     itemsCount: 9,
     roadmapItems: [
       {
@@ -2247,7 +2246,7 @@ const technologies = [
     id: "ai-ml",
     name: "AI & ML",
     iconUrl:
-      "https://upload.wikimedia.org/wikipedia/commons/thumb/1/17/Artificial_intelligence_logo.svg/512px-Artificial_intelligence_logo.svg.png",
+      "https://shivlab.com/wp-content/uploads/2024/04/mobile-page-mockup1-1.png",
     itemsCount: 9,
     roadmapItems: [
       {
@@ -2483,7 +2482,7 @@ const technologies = [
     id: "cybersecurity",
     name: "Cybersecurity",
     iconUrl:
-      "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/Cybersecurity-icon.svg/512px-Cybersecurity-icon.svg.png",
+      "https://www.crdfglobal.org/wp-content/uploads/2022/04/CyberSecurity-logo-9.png",
     itemsCount: 10,
     roadmapItems: [
       {
