@@ -125,7 +125,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.lightWhite,
-  },
+    marginBottom: 40, },
   headerTitle: {
     fontFamily: FONT.bold,
     fontSize: SIZES.large,
