@@ -98,6 +98,14 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // Notifications collection rules
+    match /notifications/{notificationId} {
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+
     // Base rule - deny by default (must be last)
     match /{document=**} {
       allow read, write: if false;

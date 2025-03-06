@@ -1,16 +1,24 @@
 import "../firebase/polyfills";
 import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, BackHandler } from "react-native";
+import {
+  View,
+  Text,
+  BackHandler,
+  StyleSheet,
+  TouchableOpacity,
+} from "react-native";
 import { Stack, useRouter, usePathname } from "expo-router";
 import { useFonts } from "expo-font";
 import ScreenBottom from "../components/common/bottom/ScreenBottom";
 import { COLORS, icons, images, SIZES } from "../constants";
 import ScreenHeaderBtn from "../components/common/header/ScreenHeaderBtn";
-import Icons from "../components/common/icons/icons";
 import { AuthProvider } from "../context/AuthContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import ExitConfirmationPopup from "../components/common/popup/ExitConfirmationPopup";
 import { NavigationContainer } from "@react-navigation/native";
+import { collection, query, where, getDocs } from "firebase/firestore";
+import { db, auth } from "../firebase/config";
+import { Ionicons } from "@expo/vector-icons";
 
 export const unstable_settings = {
   initialRouteName: "home",
@@ -32,6 +40,7 @@ const Layout = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showExitPopup, setShowExitPopup] = useState(false);
   const [navigationHistory, setNavigationHistory] = useState(["home"]);
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
 
   // Define screens that don't require authentication
   const publicScreens = [
@@ -51,6 +60,44 @@ const Layout = () => {
       setNavigationHistory((prev) => [currentScreen, ...prev]);
     }
   }, [pathname]);
+
+  // Fetch unread notifications count
+  const fetchUnreadNotificationsCount = useCallback(async () => {
+    if (!isAuthenticated || !auth.currentUser) return;
+
+    try {
+      const userId = auth.currentUser.uid;
+      const notificationsRef = collection(db, "notifications");
+      const now = new Date();
+
+      const q = query(
+        notificationsRef,
+        where("userId", "==", userId),
+        where("read", "==", false)
+      );
+
+      const querySnapshot = await getDocs(q);
+      let count = 0;
+
+      // Filter notifications that are still valid based on their showDays
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        const startDate = data.startDate?.toDate() || new Date();
+        const showDays = data.showDays || 1;
+
+        const endDate = new Date(startDate);
+        endDate.setDate(endDate.getDate() + showDays);
+
+        if (now <= endDate) {
+          count++;
+        }
+      });
+
+      setUnreadNotificationsCount(count);
+    } catch (error) {
+      console.error("Error fetching unread notifications count:", error);
+    }
+  }, [isAuthenticated]);
 
   useEffect(() => {
     const checkAuthStatus = async () => {
@@ -106,6 +153,26 @@ const Layout = () => {
       backHandler.remove();
     };
   }, [pathname, isAuthenticated, navigationHistory, currentScreen]);
+
+  // Fetch notifications count when authenticated or when returning to notification screen
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchUnreadNotificationsCount();
+    }
+
+    // Refresh notification count when returning from notification screen
+    if (
+      currentScreen !== "notification" &&
+      navigationHistory[1] === "notification"
+    ) {
+      fetchUnreadNotificationsCount();
+    }
+  }, [
+    isAuthenticated,
+    fetchUnreadNotificationsCount,
+    currentScreen,
+    navigationHistory,
+  ]);
 
   useEffect(() => {
     loadProfilePic();
@@ -165,15 +232,42 @@ const Layout = () => {
     BackHandler.exitApp();
   };
 
-  // Right header component
+  // Right header component with improved notification icon
   const HeaderRight = () => (
-    <View style={{ flexDirection: "row" }}>
-      <Icons
-        iconUrl={icons.notification}
-        dimension="100%"
-        handlePress={() => navigateWithAuthCheck("notification")}
-        marginHorizontal={SIZES.medium}
-      />
+    <View style={{ flexDirection: "row", alignItems: "center" }}>
+      <TouchableOpacity
+        style={styles.iconContainer}
+        onPress={() => navigateWithAuthCheck("notification")}
+        activeOpacity={0.7}
+      >
+        <View
+          style={[
+            styles.iconWrapper,
+            unreadNotificationsCount > 0 ? styles.activeIconWrapper : {},
+          ]}
+        >
+          <Ionicons
+            name={
+              currentScreen === "notification"
+                ? "notifications"
+                : "notifications"
+            }
+            size={SIZES.xLarge}
+            color={
+              currentScreen === "notification" ? COLORS.primary : COLORS.gray
+            }
+          />
+          {unreadNotificationsCount > 0 && (
+            <View style={styles.badgeContainer}>
+              <Text style={styles.badgeText}>
+                {unreadNotificationsCount > 99
+                  ? "99+"
+                  : unreadNotificationsCount}
+              </Text>
+            </View>
+          )}
+        </View>
+      </TouchableOpacity>
       <ScreenHeaderBtn
         iconUrl={userProfilePic ? { uri: userProfilePic } : images.profile}
         dimension="100%"
@@ -352,5 +446,40 @@ const Layout = () => {
     </AuthProvider>
   );
 };
+
+const styles = StyleSheet.create({
+  iconContainer: {
+    marginHorizontal: SIZES.medium,
+    position: "relative",
+  },
+  iconWrapper: {
+    padding: 8,
+    borderRadius: 16,
+    // backgroundColor: "rgba(240,245,255,0.8)",
+  },
+  activeIconWrapper: {
+    // backgroundColor: "rgba(230,240,255,0.9)",
+  },
+  badgeContainer: {
+    position: "absolute",
+    top: 1,
+    right: 2,
+    backgroundColor: COLORS.tertiary,
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 4,
+    borderWidth: 1.5,
+    borderColor: COLORS.white,
+  },
+  badgeText: {
+    color: COLORS.white,
+    fontSize: 10,
+    fontFamily: "DMBold",
+    textAlign: "center",
+  },
+});
 
 export default Layout;
