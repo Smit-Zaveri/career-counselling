@@ -20,7 +20,7 @@ import {
   doc,
   setDoc,
   serverTimestamp,
-  getDoc
+  getDoc,
 } from "firebase/firestore";
 import { MaterialIcons } from "@expo/vector-icons";
 
@@ -92,26 +92,25 @@ const Notification = () => {
 
       // Get reference to the notification document
       const notificationRef = doc(db, "notifications", notificationId);
-      
+
       try {
         // Use setDoc with merge instead of updateDoc to prevent BloomFilter errors
         await setDoc(
-          notificationRef, 
-          { 
+          notificationRef,
+          {
             read: true,
-            lastUpdated: serverTimestamp() 
-          }, 
+            lastUpdated: serverTimestamp(),
+          },
           { merge: true }
         );
-        
+
         // Refresh notifications to update the badge count
         setTimeout(() => {
           fetchNotifications();
         }, 500);
-        
       } catch (firestoreError) {
         console.error("Firebase error:", firestoreError);
-        
+
         // If first attempt fails, try alternative approach
         try {
           // Get the full document first
@@ -122,16 +121,16 @@ const Notification = () => {
             await setDoc(notificationRef, {
               ...data,
               read: true,
-              lastUpdated: new Date().toISOString() // Use string timestamp as fallback
+              lastUpdated: new Date().toISOString(), // Use string timestamp as fallback
             });
           }
         } catch (fallbackError) {
           console.error("Fallback update also failed:", fallbackError);
-          
+
           // Last resort - try basic updateDoc with minimal fields
           try {
             await updateDoc(notificationRef, {
-              read: true
+              read: true,
             });
           } catch (lastError) {
             // Re-throw the error to be caught by the outer try-catch
@@ -139,10 +138,9 @@ const Notification = () => {
           }
         }
       }
-
     } catch (error) {
       console.error("Error marking notification as read:", error);
-      
+
       // Revert the optimistic update in the UI if all update attempts failed
       setNotifications((prevNotifications) =>
         prevNotifications.map((notification) =>
