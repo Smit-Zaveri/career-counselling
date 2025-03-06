@@ -67,9 +67,9 @@ const ScreenBottom = ({ activeScreen }) => {
         key={screenName}
         style={styles.navItemContainer}
         onPress={() => {
-          if (screenName !== activeScreen) {
-            router.push(screenName);
-          }
+          // Always navigate to the selected screen using replace
+          // This ensures we can go back to home from profile screen
+          router.replace(screenName);
         }}
         activeOpacity={0.7}
       >
