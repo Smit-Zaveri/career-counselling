@@ -546,7 +546,7 @@ const ProfileScreen = () => {
           </TouchableOpacity>
 
           {/* Activity History */}
-          <TouchableOpacity
+          {/* <TouchableOpacity
             style={styles.optionRow}
             activeOpacity={0.7}
             onPress={() => navigateToScreen("history")}
@@ -562,10 +562,10 @@ const ProfileScreen = () => {
             <View style={styles.arrowContainer}>
               <Icon name="chevron-forward" size={18} color={COLORS.white} />
             </View>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
 
           {/* Settings */}
-          <TouchableOpacity
+          {/* <TouchableOpacity
             style={styles.optionRow}
             activeOpacity={0.7}
             onPress={() => navigateToScreen("settings")}
@@ -581,7 +581,7 @@ const ProfileScreen = () => {
             <View style={styles.arrowContainer}>
               <Icon name="chevron-forward" size={18} color={COLORS.white} />
             </View>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
 
           {/* Log out */}
           <TouchableOpacity
@@ -603,7 +603,7 @@ const ProfileScreen = () => {
         </View>
 
         <View style={styles.footer}>
-          <Text style={styles.versionText}>Version 1.0.0</Text>
+          <Text style={styles.versionText}>Version 1.1.0</Text>
         </View>
       </ScrollView>
 
