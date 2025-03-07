@@ -335,7 +335,7 @@ const EducationModal = ({ visible, onClose, onSave, initialData = null }) => {
               />
             </View>
 
-            <View style={modalStyles.field}>
+            <View style={[modalStyles.field, { paddingBottom: 16 }]}>
               <Text style={modalStyles.label}>Location</Text>
               <TextInput
                 style={modalStyles.input}
@@ -981,7 +981,7 @@ const EditProfileScreen = () => {
                     style={styles.addButton}
                     onPress={() => setShowEducationModal(true)}
                   >
-                    <Icon name="add" size={24} color={COLORS.primary} />
+                    <Icon name="add" size={24} color={COLORS.white} />
                   </TouchableOpacity>
                 </View>
 
@@ -1292,7 +1292,7 @@ const modalStyles = StyleSheet.create({
     backgroundColor: COLORS.white,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: "90%",
+    maxHeight: "80%",
   },
   header: {
     flexDirection: "row",
@@ -1600,7 +1600,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
     borderRadius: 16,
     padding: 15,
-    marginBottom: 20,
+    marginBottom: 5,
     ...Platform.select({
       ios: {
         shadowColor: COLORS.gray2,
@@ -1642,7 +1642,8 @@ const styles = StyleSheet.create({
   },
   input: {
     backgroundColor: COLORS.white,
-    padding: SIZES.medium,
+    height: 45,
+    padding: SIZES.small,
     borderRadius: SIZES.small,
     borderWidth: 1,
     borderColor: COLORS.gray2,
@@ -1659,6 +1660,7 @@ const styles = StyleSheet.create({
   },
   addItemInput: {
     flex: 1,
+    height: 45,
     backgroundColor: COLORS.white,
     padding: SIZES.medium,
     borderRadius: SIZES.small,
@@ -1670,6 +1672,7 @@ const styles = StyleSheet.create({
   addButton: {
     backgroundColor: COLORS.primary,
     width: 45,
+    height: 45,
     borderRadius: 10,
     justifyContent: "center",
     alignItems: "center",
@@ -1705,7 +1708,7 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   saveButtonContainer: {
-    marginBottom: 80, // Extra space for floating button
+    //marginBottom: 80, // Extra space for floating button
   },
   saveButton: {
     backgroundColor: COLORS.primary,
@@ -1765,7 +1768,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.lightWhite,
     borderRadius: 10,
     padding: 10,
-    marginBottom: 10,
+    marginBottom: 20,
   },
   educationHeader: {
     flexDirection: "row",
