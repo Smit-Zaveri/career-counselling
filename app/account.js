@@ -351,7 +351,29 @@ const AccountScreen = () => {
               </View>
               <View style={styles.infoContent}>
                 <Text style={styles.infoLabel}>Education</Text>
-                <Text style={styles.infoValue}>{userData?.education}</Text>
+                {userData?.education?.length > 0 ? (
+                  <View style={styles.educationList}>
+                    {userData.education.map((edu, index) => (
+                      <View key={index} style={styles.educationItem}>
+                        <Text style={styles.educationDegree}>{edu.degree}</Text>
+                        <Text style={styles.educationInstitution}>
+                          {edu.institution}
+                        </Text>
+                        <Text style={styles.educationYear}>
+                          {edu.startYear} -{" "}
+                          {edu.isOngoing ? "Present" : edu.endYear}
+                        </Text>
+                        {edu.percentage && (
+                          <Text style={styles.educationPercentage}>
+                            {edu.percentage}
+                          </Text>
+                        )}
+                      </View>
+                    ))}
+                  </View>
+                ) : (
+                  <Text style={styles.infoValue}>Not specified</Text>
+                )}
               </View>
             </View>
 
@@ -764,5 +786,37 @@ const styles = StyleSheet.create({
     height: 10,
     backgroundColor: COLORS.primary,
     borderRadius: 5,
+  },
+  educationList: {
+    marginTop: 4,
+  },
+  educationItem: {
+    marginBottom: 8,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(0, 0, 0, 0.05)",
+  },
+  educationDegree: {
+    fontSize: SIZES.medium,
+    fontFamily: FONT.medium,
+    color: COLORS.primary,
+  },
+  educationInstitution: {
+    fontSize: SIZES.small + 1,
+    fontFamily: FONT.regular,
+    color: COLORS.gray,
+    marginTop: 2,
+  },
+  educationYear: {
+    fontSize: SIZES.small + 1,
+    fontFamily: FONT.regular,
+    color: COLORS.gray,
+    marginTop: 2,
+  },
+  educationPercentage: {
+    fontSize: SIZES.small + 1,
+    fontFamily: FONT.regular,
+    color: COLORS.gray,
+    marginTop: 2,
   },
 });

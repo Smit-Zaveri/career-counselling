@@ -131,6 +131,243 @@ const ProfileCompletionGuide = ({ visible, onClose }) => {
   );
 };
 
+const EducationModal = ({ visible, onClose, onSave, initialData = null }) => {
+  const [educationData, setEducationData] = useState({
+    id: initialData?.id || Date.now().toString(),
+    degree: initialData?.degree || "",
+    institution: initialData?.institution || "",
+    field: initialData?.field || "",
+    startYear: initialData?.startYear || "",
+    endYear: initialData?.endYear || "",
+    percentage: initialData?.percentage || "",
+    grade: initialData?.grade || "",
+    location: initialData?.location || "",
+    isOngoing: initialData?.isOngoing || false,
+  });
+
+  const [errors, setErrors] = useState({});
+
+  const validateForm = () => {
+    const newErrors = {};
+    if (!educationData.degree.trim()) newErrors.degree = "Degree is required";
+    if (!educationData.institution.trim())
+      newErrors.institution = "Institution is required";
+    if (!educationData.startYear)
+      newErrors.startYear = "Start year is required";
+    if (!educationData.isOngoing && !educationData.endYear) {
+      newErrors.endYear = "End year is required";
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSave = () => {
+    if (validateForm()) {
+      onSave(educationData);
+      onClose();
+    }
+  };
+
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={onClose}
+    >
+      <View style={modalStyles.overlay}>
+        <View style={modalStyles.content}>
+          <View style={modalStyles.header}>
+            <Text style={modalStyles.title}>
+              {initialData ? "Edit Education" : "Add Education"}
+            </Text>
+            <TouchableOpacity onPress={onClose} style={modalStyles.closeButton}>
+              <Icon name="close" size={24} color={COLORS.gray} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={modalStyles.form}>
+            <View style={modalStyles.field}>
+              <Text style={modalStyles.label}>Degree/Qualification*</Text>
+              <TextInput
+                style={[
+                  modalStyles.input,
+                  errors.degree && modalStyles.inputError,
+                ]}
+                value={educationData.degree}
+                onChangeText={(text) =>
+                  setEducationData({ ...educationData, degree: text })
+                }
+                placeholder="e.g., Bachelor of Science, High School"
+              />
+              {errors.degree && (
+                <Text style={modalStyles.errorText}>{errors.degree}</Text>
+              )}
+            </View>
+
+            <View style={modalStyles.field}>
+              <Text style={modalStyles.label}>Institution/School*</Text>
+              <TextInput
+                style={[
+                  modalStyles.input,
+                  errors.institution && modalStyles.inputError,
+                ]}
+                value={educationData.institution}
+                onChangeText={(text) =>
+                  setEducationData({ ...educationData, institution: text })
+                }
+                placeholder="Name of institution"
+              />
+              {errors.institution && (
+                <Text style={modalStyles.errorText}>{errors.institution}</Text>
+              )}
+            </View>
+
+            <View style={modalStyles.field}>
+              <Text style={modalStyles.label}>
+                Field of Study/Specialization
+              </Text>
+              <TextInput
+                style={modalStyles.input}
+                value={educationData.field}
+                onChangeText={(text) =>
+                  setEducationData({ ...educationData, field: text })
+                }
+                placeholder="e.g., Computer Science"
+              />
+            </View>
+
+            <View style={modalStyles.row}>
+              <View style={[modalStyles.field, { flex: 1, marginRight: 8 }]}>
+                <Text style={modalStyles.label}>Start Year*</Text>
+                <TextInput
+                  style={[
+                    modalStyles.input,
+                    errors.startYear && modalStyles.inputError,
+                  ]}
+                  value={educationData.startYear}
+                  onChangeText={(text) =>
+                    setEducationData({
+                      ...educationData,
+                      startYear: text.replace(/[^0-9]/g, ""),
+                    })
+                  }
+                  placeholder="YYYY"
+                  keyboardType="numeric"
+                  maxLength={4}
+                />
+                {errors.startYear && (
+                  <Text style={modalStyles.errorText}>{errors.startYear}</Text>
+                )}
+              </View>
+
+              <View style={[modalStyles.field, { flex: 1, marginLeft: 8 }]}>
+                <Text style={modalStyles.label}>End Year</Text>
+                <TextInput
+                  style={[
+                    modalStyles.input,
+                    errors.endYear && modalStyles.inputError,
+                  ]}
+                  value={
+                    educationData.isOngoing ? "Present" : educationData.endYear
+                  }
+                  onChangeText={(text) =>
+                    setEducationData({
+                      ...educationData,
+                      endYear: text.replace(/[^0-9]/g, ""),
+                    })
+                  }
+                  placeholder="YYYY"
+                  keyboardType="numeric"
+                  maxLength={4}
+                  editable={!educationData.isOngoing}
+                />
+                {errors.endYear && (
+                  <Text style={modalStyles.errorText}>{errors.endYear}</Text>
+                )}
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={modalStyles.checkbox}
+              onPress={() =>
+                setEducationData({
+                  ...educationData,
+                  isOngoing: !educationData.isOngoing,
+                })
+              }
+            >
+              <View
+                style={[
+                  modalStyles.checkboxBox,
+                  educationData.isOngoing && modalStyles.checkboxChecked,
+                ]}
+              >
+                {educationData.isOngoing && (
+                  <Icon name="checkmark" size={16} color={COLORS.white} />
+                )}
+              </View>
+              <Text style={modalStyles.checkboxLabel}>Currently Studying</Text>
+            </TouchableOpacity>
+
+            <View style={modalStyles.field}>
+              <Text style={modalStyles.label}>Percentage/CGPA</Text>
+              <TextInput
+                style={modalStyles.input}
+                value={educationData.percentage}
+                onChangeText={(text) =>
+                  setEducationData({ ...educationData, percentage: text })
+                }
+                placeholder="e.g., 85% or 3.8"
+                keyboardType="decimal-pad"
+              />
+            </View>
+
+            <View style={modalStyles.field}>
+              <Text style={modalStyles.label}>Grade/Division</Text>
+              <TextInput
+                style={modalStyles.input}
+                value={educationData.grade}
+                onChangeText={(text) =>
+                  setEducationData({ ...educationData, grade: text })
+                }
+                placeholder="e.g., First Class, A+"
+              />
+            </View>
+
+            <View style={modalStyles.field}>
+              <Text style={modalStyles.label}>Location</Text>
+              <TextInput
+                style={modalStyles.input}
+                value={educationData.location}
+                onChangeText={(text) =>
+                  setEducationData({ ...educationData, location: text })
+                }
+                placeholder="City, Country"
+              />
+            </View>
+          </ScrollView>
+
+          <View style={modalStyles.actions}>
+            <TouchableOpacity
+              style={modalStyles.cancelButton}
+              onPress={onClose}
+            >
+              <Text style={modalStyles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={modalStyles.saveButton}
+              onPress={handleSave}
+            >
+              <Text style={modalStyles.saveButtonText}>Save</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
 const EditProfileScreen = () => {
   const router = useRouter();
   const [userData, setUserData] = useState({
@@ -138,7 +375,7 @@ const EditProfileScreen = () => {
     email: "",
     photoUrl: null,
     phone: "",
-    education: "",
+    education: [],
     experience: "",
     skills: [],
     jobPreferences: [],
@@ -155,6 +392,8 @@ const EditProfileScreen = () => {
     skills: 0,
     preferences: 0,
   });
+  const [showEducationModal, setShowEducationModal] = useState(false);
+  const [editingEducation, setEditingEducation] = useState(null);
 
   useEffect(() => {
     loadUserData();
@@ -174,7 +413,7 @@ const EditProfileScreen = () => {
     if (userData.phone && userData.phone.trim().length > 0) basicScore += 10;
 
     // Education & Experience - 30%
-    if (userData.education && userData.education.trim().length > 0)
+    if (userData.education && userData.education.length > 0)
       educationScore += 15;
     if (userData.experience && userData.experience.trim().length > 0)
       educationScore += 15;
@@ -234,10 +473,12 @@ const EditProfileScreen = () => {
           email: parsed.email || "",
           photoUrl: parsed.photoUrl || null,
           phone: parsed.phone || "",
-          education: parsed.education || "",
+          education: Array.isArray(parsed.education) ? parsed.education : [],
           experience: parsed.experience || "",
-          skills: parsed.skills || [],
-          jobPreferences: parsed.jobPreferences || [],
+          skills: Array.isArray(parsed.skills) ? parsed.skills : [],
+          jobPreferences: Array.isArray(parsed.jobPreferences)
+            ? parsed.jobPreferences
+            : [],
         });
       }
 
@@ -256,10 +497,12 @@ const EditProfileScreen = () => {
           email: auth.currentUser.email || "",
           photoUrl: data.photoUrl || null,
           phone: data.phone || "",
-          education: data.education || "",
+          education: Array.isArray(data.education) ? data.education : [],
           experience: data.experience || "",
-          skills: data.skills || [],
-          jobPreferences: data.jobPreferences || [],
+          skills: Array.isArray(data.skills) ? data.skills : [],
+          jobPreferences: Array.isArray(data.jobPreferences)
+            ? data.jobPreferences
+            : [],
         });
       }
     } catch (error) {
@@ -463,6 +706,72 @@ const EditProfileScreen = () => {
     return messages.join(" • ");
   };
 
+  const handleSaveEducation = (educationData) => {
+    try {
+      if (editingEducation) {
+        // Update existing education
+        const updatedEducation = userData.education.map((edu) =>
+          edu.id === educationData.id ? educationData : edu
+        );
+        setUserData((prev) => ({
+          ...prev,
+          education: updatedEducation,
+        }));
+      } else {
+        // Add new education
+        setUserData((prev) => ({
+          ...prev,
+          education: [
+            ...prev.education,
+            { ...educationData, id: Date.now().toString() },
+          ],
+        }));
+      }
+      setShowEducationModal(false);
+      setEditingEducation(null);
+    } catch (error) {
+      console.error("Error saving education:", error);
+      Alert.alert("Error", "Failed to save education details");
+    }
+  };
+
+  const handleEditEducation = (educationData) => {
+    try {
+      setEditingEducation(educationData);
+      setShowEducationModal(true);
+    } catch (error) {
+      console.error("Error editing education:", error);
+      Alert.alert("Error", "Failed to edit education details");
+    }
+  };
+
+  const handleDeleteEducation = (educationId) => {
+    try {
+      Alert.alert(
+        "Delete Education",
+        "Are you sure you want to delete this education entry?",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Delete",
+            style: "destructive",
+            onPress: () => {
+              setUserData((prev) => ({
+                ...prev,
+                education: prev.education.filter(
+                  (edu) => edu.id !== educationId
+                ),
+              }));
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      console.error("Error deleting education:", error);
+      Alert.alert("Error", "Failed to delete education entry");
+    }
+  };
+
   if (initialLoading) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
@@ -481,6 +790,17 @@ const EditProfileScreen = () => {
       <ProfileCompletionGuide
         visible={showGuide}
         onClose={() => setShowGuide(false)}
+      />
+
+      {/* Education Modal */}
+      <EducationModal
+        visible={showEducationModal}
+        onClose={() => {
+          setShowEducationModal(false);
+          setEditingEducation(null);
+        }}
+        onSave={handleSaveEducation}
+        initialData={editingEducation}
       />
 
       {/* Header */}
@@ -656,37 +976,75 @@ const EditProfileScreen = () => {
               {/* Education & Experience Section */}
               <View style={styles.sectionCard}>
                 <View style={styles.sectionHeaderRow}>
-                  <Text style={styles.sectionTitle}>
-                    Education & Experience
-                  </Text>
-                  <View style={styles.sectionBadge}>
-                    <Text style={styles.sectionBadgeText}>
-                      {completionBreakdown.education}/30%
-                    </Text>
-                  </View>
+                  <Text style={styles.sectionTitle}>Education</Text>
+                  <TouchableOpacity
+                    style={styles.addButton}
+                    onPress={() => setShowEducationModal(true)}
+                  >
+                    <Icon name="add" size={24} color={COLORS.primary} />
+                  </TouchableOpacity>
                 </View>
 
-                <Text style={styles.label}>Education</Text>
-                <TextInput
-                  style={styles.input}
-                  value={userData.education}
-                  onChangeText={(text) =>
-                    setUserData({ ...userData, education: text })
-                  }
-                  placeholder="Your highest education level"
-                />
+                {userData.education.length > 0 ? (
+                  <View style={styles.educationList}>
+                    {userData.education.map((edu, index) => (
+                      <View key={edu.id || index} style={styles.educationCard}>
+                        <View style={styles.educationHeader}>
+                          <Text style={styles.degreeName}>{edu.degree}</Text>
+                          <View style={styles.educationActions}>
+                            <TouchableOpacity
+                              onPress={() => handleEditEducation(edu)}
+                            >
+                              <Icon
+                                name="create-outline"
+                                size={20}
+                                color={COLORS.primary}
+                              />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              onPress={() => handleDeleteEducation(edu.id)}
+                            >
+                              <Icon
+                                name="trash-outline"
+                                size={20}
+                                color="#FF6464"
+                              />
+                            </TouchableOpacity>
+                          </View>
+                        </View>
 
-                <Text style={styles.label}>Experience</Text>
-                <TextInput
-                  style={[styles.input, styles.textArea]}
-                  value={userData.experience}
-                  onChangeText={(text) =>
-                    setUserData({ ...userData, experience: text })
-                  }
-                  placeholder="Brief description of your experience"
-                  multiline={true}
-                  numberOfLines={4}
-                />
+                        <Text style={styles.institutionName}>
+                          {edu.institution}
+                        </Text>
+                        {edu.field && (
+                          <Text style={styles.fieldName}>{edu.field}</Text>
+                        )}
+
+                        <View style={styles.educationDetails}>
+                          <Text style={styles.yearText}>
+                            {edu.startYear} -{" "}
+                            {edu.isOngoing ? "Present" : edu.endYear}
+                          </Text>
+                          {edu.percentage && (
+                            <Text style={styles.percentageText}>
+                              {edu.percentage}
+                            </Text>
+                          )}
+                        </View>
+
+                        {edu.location && (
+                          <Text style={styles.locationText}>
+                            {edu.location}
+                          </Text>
+                        )}
+                      </View>
+                    ))}
+                  </View>
+                ) : (
+                  <Text style={styles.noDataText}>
+                    No education details added
+                  </Text>
+                )}
               </View>
 
               {/* Skills Section */}
@@ -921,6 +1279,125 @@ const guideStyles = StyleSheet.create({
     fontFamily: FONT.bold,
     fontSize: SIZES.medium,
     color: COLORS.white,
+  },
+});
+
+const modalStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
+  },
+  content: {
+    backgroundColor: COLORS.white,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: "90%",
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.gray2,
+  },
+  title: {
+    fontSize: SIZES.large,
+    fontFamily: FONT.bold,
+    color: COLORS.primary,
+  },
+  closeButton: {
+    padding: 4,
+  },
+  form: {
+    padding: 16,
+  },
+  field: {
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: SIZES.small + 2,
+    fontFamily: FONT.medium,
+    color: COLORS.gray,
+    marginBottom: 8,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: COLORS.gray2,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: SIZES.medium,
+    fontFamily: FONT.regular,
+  },
+  inputError: {
+    borderColor: "#FF6464",
+  },
+  errorText: {
+    color: "#FF6464",
+    fontSize: SIZES.small,
+    fontFamily: FONT.regular,
+    marginTop: 4,
+  },
+  row: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  checkbox: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  checkboxBox: {
+    width: 20,
+    height: 20,
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+    borderRadius: 4,
+    marginRight: 8,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  checkboxChecked: {
+    backgroundColor: COLORS.primary,
+  },
+  checkboxLabel: {
+    fontSize: SIZES.medium,
+    fontFamily: FONT.regular,
+    color: COLORS.gray,
+  },
+  actions: {
+    flexDirection: "row",
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.gray2,
+  },
+  cancelButton: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    marginRight: 8,
+  },
+  saveButton: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: COLORS.primary,
+    marginLeft: 8,
+  },
+  cancelButtonText: {
+    color: COLORS.primary,
+    fontSize: SIZES.medium,
+    fontFamily: FONT.medium,
+    textAlign: "center",
+  },
+  saveButtonText: {
+    color: COLORS.white,
+    fontSize: SIZES.medium,
+    fontFamily: FONT.medium,
+    textAlign: "center",
   },
 });
 
@@ -1280,6 +1757,69 @@ const styles = StyleSheet.create({
     fontSize: SIZES.small + 1,
     color: COLORS.gray,
     marginBottom: 10,
+  },
+  educationList: {
+    marginTop: 10,
+  },
+  educationCard: {
+    backgroundColor: COLORS.lightWhite,
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 10,
+  },
+  educationHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 5,
+  },
+  degreeName: {
+    fontFamily: FONT.bold,
+    fontSize: SIZES.medium,
+    color: COLORS.primary,
+  },
+  educationActions: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  institutionName: {
+    fontFamily: FONT.medium,
+    fontSize: SIZES.small + 1,
+    color: COLORS.gray,
+  },
+  fieldName: {
+    fontFamily: FONT.regular,
+    fontSize: SIZES.small + 1,
+    color: COLORS.gray,
+    marginBottom: 5,
+  },
+  educationDetails: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 5,
+  },
+  yearText: {
+    fontFamily: FONT.regular,
+    fontSize: SIZES.small + 1,
+    color: COLORS.gray,
+  },
+  percentageText: {
+    fontFamily: FONT.regular,
+    fontSize: SIZES.small + 1,
+    color: COLORS.gray,
+  },
+  locationText: {
+    fontFamily: FONT.regular,
+    fontSize: SIZES.small + 1,
+    color: COLORS.gray,
+  },
+  noDataText: {
+    fontFamily: FONT.regular,
+    fontSize: SIZES.small + 1,
+    color: COLORS.gray,
+    textAlign: "center",
+    marginTop: 10,
   },
 });
 
