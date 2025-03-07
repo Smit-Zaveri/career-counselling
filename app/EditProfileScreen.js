@@ -132,20 +132,63 @@ const ProfileCompletionGuide = ({ visible, onClose }) => {
 };
 
 const EducationModal = ({ visible, onClose, onSave, initialData = null }) => {
+  // Initialize with empty data instead of trying to use initialData here
+  // This was causing the issue as initialData could be null on first render
   const [educationData, setEducationData] = useState({
-    id: initialData?.id || Date.now().toString(),
-    degree: initialData?.degree || "",
-    institution: initialData?.institution || "",
-    field: initialData?.field || "",
-    startYear: initialData?.startYear || "",
-    endYear: initialData?.endYear || "",
-    percentage: initialData?.percentage || "",
-    grade: initialData?.grade || "",
-    location: initialData?.location || "",
-    isOngoing: initialData?.isOngoing || false,
+    id: Date.now().toString(),
+    degree: "",
+    institution: "",
+    field: "",
+    startYear: "",
+    endYear: "",
+    percentage: "",
+    grade: "",
+    location: "",
+    isOngoing: false,
   });
 
   const [errors, setErrors] = useState({});
+
+  // More robust useEffect to handle initialData changes
+  useEffect(() => {
+    // Only update form when modal is visible and initialData exists
+    if (visible) {
+      if (initialData) {
+        console.log("Initializing form with data:", initialData);
+        // Set a small delay to ensure proper state update
+        setTimeout(() => {
+          setEducationData({
+            id: initialData.id || Date.now().toString(),
+            degree: initialData.degree || "",
+            institution: initialData.institution || "",
+            field: initialData.field || "",
+            startYear: initialData.startYear || "",
+            endYear: initialData.endYear || "",
+            percentage: initialData.percentage || "",
+            grade: initialData.grade || "",
+            location: initialData.location || "",
+            isOngoing: initialData.isOngoing || false,
+          });
+        }, 50);
+      } else {
+        // Reset form for new entries
+        setEducationData({
+          id: Date.now().toString(),
+          degree: "",
+          institution: "",
+          field: "",
+          startYear: "",
+          endYear: "",
+          percentage: "",
+          grade: "",
+          location: "",
+          isOngoing: false,
+        });
+      }
+      // Reset errors when modal opens
+      setErrors({});
+    }
+  }, [visible, initialData]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -713,19 +756,21 @@ const EditProfileScreen = () => {
         const updatedEducation = userData.education.map((edu) =>
           edu.id === educationData.id ? educationData : edu
         );
-        setUserData((prev) => ({
-          ...prev,
+        setUserData({
+          ...userData,
           education: updatedEducation,
-        }));
+        });
+        console.log("Updated education:", educationData);
       } else {
         // Add new education
-        setUserData((prev) => ({
-          ...prev,
+        setUserData({
+          ...userData,
           education: [
-            ...prev.education,
+            ...userData.education,
             { ...educationData, id: Date.now().toString() },
           ],
-        }));
+        });
+        console.log("Added new education:", educationData);
       }
       setShowEducationModal(false);
       setEditingEducation(null);
@@ -737,8 +782,18 @@ const EditProfileScreen = () => {
 
   const handleEditEducation = (educationData) => {
     try {
-      setEditingEducation(educationData);
+      // First set the modal to visible to ensure it's ready to receive data
       setShowEducationModal(true);
+
+      // Clone the data to avoid reference issues
+      const educationToEdit = { ...educationData };
+
+      console.log("Editing education with data:", educationToEdit);
+
+      // Set with a slight delay to ensure the modal is fully rendered
+      setTimeout(() => {
+        setEditingEducation(educationToEdit);
+      }, 100);
     } catch (error) {
       console.error("Error editing education:", error);
       Alert.alert("Error", "Failed to edit education details");
@@ -796,8 +851,9 @@ const EditProfileScreen = () => {
       <EducationModal
         visible={showEducationModal}
         onClose={() => {
-          setShowEducationModal(false);
+          // Clear editing state before closing the modal
           setEditingEducation(null);
+          setShowEducationModal(false);
         }}
         onSave={handleSaveEducation}
         initialData={editingEducation}
@@ -1662,7 +1718,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 45,
     backgroundColor: COLORS.white,
-    padding: SIZES.medium,
+    padding: SIZES.small,
     borderRadius: SIZES.small,
     borderWidth: 1,
     borderColor: COLORS.gray2,
@@ -1680,8 +1736,8 @@ const styles = StyleSheet.create({
   tagsContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
-    marginBottom: 20,
-    minHeight: 60,
+    marginBottom: 0,
+    minHeight: 30,
   },
   tag: {
     backgroundColor: "rgba(51, 102, 255, 0.1)",
