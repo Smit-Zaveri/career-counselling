@@ -21,7 +21,7 @@ import {
   addDoc,
   serverTimestamp,
   setDoc,
-  deleteDoc, // Add this import
+  deleteDoc,
 } from "firebase/firestore";
 import {
   getAuth,
@@ -47,16 +47,31 @@ const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
 // Initialize Auth with AsyncStorage persistence
 let auth;
+
 if (Platform.OS !== "web") {
   try {
-    auth = initializeAuth(app, {
-      persistence: getReactNativePersistence(AsyncStorage),
-    });
-  } catch (error) {
+    // Simplified auth initialization to avoid accessing undefined properties
     auth = getAuth(app);
-    console.log("Using existing auth instance");
+    
+    // Only initialize auth with persistence if we don't already have it
+    if (!auth.currentUser && !auth._canUseIndexedDBPromise) {
+      // Re-initialize with persistence
+      auth = initializeAuth(app, {
+        persistence: getReactNativePersistence(AsyncStorage),
+      });
+    }
+  } catch (error) {
+    console.log("Auth initialization error:", error.message);
+    // Fallback to basic auth
+    auth = getAuth(app);
   }
 } else {
+  auth = getAuth(app);
+}
+
+// Ensure auth is always valid
+if (!auth) {
+  console.warn("Auth initialization failed, falling back to default auth");
   auth = getAuth(app);
 }
 

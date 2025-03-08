@@ -106,6 +106,15 @@ service cloud.firestore {
       allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
 
+    // Counselors collection - allow authenticated users to update for bookings
+    match /counselors/{counselorId} {
+      allow read: if true;
+      // Allow authenticated users to update bookedSlots array
+      allow update: if request.auth != null && 
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['bookedSlots']) &&
+        request.resource.data.bookedSlots.size() == resource.data.bookedSlots.size() + 1;
+    }
+
     // Base rule - deny by default (must be last)
     match /{document=**} {
       allow read, write: if false;

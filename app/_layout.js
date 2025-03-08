@@ -426,6 +426,18 @@ const Layout = () => {
             }}
           />
           <Stack.Screen
+            name="session"
+            options={{
+              headerTitle: "Session",
+              headerTitleStyle: {
+                fontFamily: "DMBold",
+                color: COLORS.primary,
+                fontSize: SIZES.large,
+              },
+              headerRight: () => <HeaderRight />,
+            }}
+          />
+          <Stack.Screen
             name="SavedJobs"
             options={{
               headerShown: false,
