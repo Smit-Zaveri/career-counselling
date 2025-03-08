@@ -57,7 +57,13 @@ const Roadmap = () => {
         })
       );
       console.log("Finished loading technologies with progress");
-      setTechnologiesData(updatedTechnologies);
+
+      // Sort technologies by progress level (higher progress first)
+      const sortedTechnologies = [...updatedTechnologies].sort(
+        (a, b) => (b.currentProgress || 0) - (a.currentProgress || 0)
+      );
+
+      setTechnologiesData(sortedTechnologies);
     } catch (error) {
       console.error("Error loading technologies with progress:", error);
     }
