@@ -1,19 +1,18 @@
 <div align="center">
   <br />
-    <a href="https://youtu.be/mJ3bGvy0WAY?feature=shared" target="_blank">
-      <img src="https://github.com/adrianhajdin/project_react_native_jobs/assets/151519281/e7514725-0706-4080-bee4-b042554dabf7" alt="Project Banner">
-    </a>
+    <img src="https://github.com/adrianhajdin/project_react_native_jobs/assets/151519281/e7514725-0706-4080-bee4-b042554dabf7" alt="Project Banner">
   <br />
 
   <div>
     <img src="https://img.shields.io/badge/-React_Native-black?style=for-the-badge&logoColor=white&logo=react&color=61DAFB" alt="react.js" />
     <img src="https://img.shields.io/badge/-Expo-black?style=for-the-badge&logoColor=white&logo=expo&color=000020" alt="expo" />
+    <img src="https://img.shields.io/badge/-Firebase-black?style=for-the-badge&logoColor=white&logo=firebase&color=FFCA28" alt="firebase" />
   </div>
 
-  <h3 align="center">React Native Job Finder App</h3>
+  <h3 align="center">Career Connect: Job Search & Professional Development</h3>
 
    <div align="center">
-     Build this project step by step with our detailed tutorial on <a href="https://www.youtube.com/@javascriptmastery/videos" target="_blank"><b>JavaScript Mastery</b></a> YouTube. Join the JSM family!
+     A comprehensive career development platform built with React Native and Firebase
     </div>
 </div>
 
@@ -23,57 +22,49 @@
 2. ⚙️ [Tech Stack](#tech-stack)
 3. 🔋 [Features](#features)
 4. 🤸 [Quick Start](#quick-start)
-5. 🕸️ [Snippets](#snippets)
-6. 🔗 [Links](#links)
-7. 🚀 [More](#more)
-
-## 🚨 Tutorial
-
-This repository contains the code corresponding to an in-depth tutorial available on our YouTube channel, <a href="https://www.youtube.com/@javascriptmastery/videos" target="_blank"><b>JavaScript Mastery</b></a>.
-
-If you prefer visual learning, this is the perfect resource for you. Follow our tutorial to learn how to build projects like these step-by-step in a beginner-friendly manner!
-
-<a href="https://youtu.be/mJ3bGvy0WAY?feature=shared" target="_blank"><img src="https://github.com/sujatagunale/EasyRead/assets/151519281/1736fca5-a031-4854-8c09-bc110e3bc16d" /></a>
+5. 📱 [App Structure](#app-structure)
+6. 🔗 [API Integration](#api-integration)
+7. 🧠 [Learning Resources](#learning-resources)
 
 ## <a name="introduction">🤖 Introduction</a>
 
-A hands-on experience in React Native development, from understanding the basics to building a feature-rich app with a focus on UI/UX, external data integration, and best practices.
+Career Connect is a comprehensive career development platform built with React Native and Firebase. It offers job search functionality, community interaction, and personalized learning roadmaps to help users advance their tech careers.
 
-If you're getting started and need assistance or face any bugs, join our active Discord community with over 27k+ members. It's a place where people help each other out.
-
-<a href="https://discord.com/invite/n6EdbFJ" target="_blank"><img src="https://github.com/sujatagunale/EasyRead/assets/151519281/618f4872-1e10-42da-8213-1d69e486d02e" /></a>
+The app is designed to provide an all-in-one solution for job seekers by combining job listings, professional networking, and skill development in a single mobile application.
 
 ## <a name="tech-stack">⚙️ Tech Stack</a>
 
-- Node.js
-- React Native
-- Axios
-- Expo
-- Stylesheet
+- **React Native** - Mobile application framework
+- **Expo** - Development tooling and deployment
+- **Firebase** - Authentication, database, and cloud functions
+- **Firebase Firestore** - NoSQL database for storing job listings and user data
+- **React Navigation** - Navigation management
+- **Expo Router** - File-based routing for mobile apps
+- **AsyncStorage** - Local data persistence
+- **Linear Gradient** - UI styling components
+- **React Native Vector Icons** - Icon library
 
 ## <a name="features">🔋 Features</a>
 
-👉 **Visually Appealing UI/UX Design**: Develop an aesthetically pleasing user interface using React Native components.
+👉 **Job Search & Discovery**: Browse jobs by popularity, category, or location with advanced filtering options
 
-👉 **Third Party API Integration**: Fetch data from an external API and seamlessly integrate it into the app.
+👉 **Save & Manage Jobs**: Save interesting job listings and easily access them later
 
-👉 **Search & Pagination Functionality**: Implement search functionality and pagination for efficient data navigation.
+👉 **Community Platform**: Join professional communities to network, ask questions, and share insights
 
-👉 **Custom API Data Fetching Hooks**:Create custom hooks for streamlined and reusable API data fetching.
+👉 **Career Roadmaps**: Follow structured learning paths for different technology stacks and roles
 
-👉 **Dynamic Home Page**: Explore diverse jobs from popular and nearby locations across different categories.
+👉 **Learning Progress Tracking**: Track your progress through career roadmaps to stay motivated
 
-👉 **Browse with Ease on Explore Page**: Page: Navigate through various jobs spanning different categories and types.
+👉 **Personalized Dashboard**: View activity summaries, job recommendations, and community highlights
 
-👉 **Detailed Job Insights**: View comprehensive job details, including application links, salary info, responsibilities, and qualifications.
+👉 **Professional Profiles**: Create and manage your professional profile for networking
 
-👉 **Tailored Job Exploration**: Find jobs specific to a particular title
+👉 **Real-time Chat**: Communicate with community members through integrated chat functionality
 
-👉 **Robust Loading and Error Management**: Ensure effective handling of loading processes and error scenarios.
+👉 **Progress Persistence**: Save your learning progress across app sessions
 
-👉 **Optimized for All Devices**: A responsive design for a seamless user experience across various devices.
-
-and many more, including code architecture and reusability
+👉 **Mobile-Optimized Interface**: Responsive design that works on different screen sizes
 
 ## <a name="quick-start">🤸 Quick Start</a>
 
@@ -86,12 +77,13 @@ Make sure you have the following installed on your machine:
 - [Git](https://git-scm.com/)
 - [Node.js](https://nodejs.org/en)
 - [npm](https://www.npmjs.com/) (Node Package Manager)
+- [Expo CLI](https://docs.expo.dev/get-started/installation/)
 
 **Cloning the Repository**
 
 ```bash
-git clone https://github.com/adrianhajdin/project_react_native_jobs.git
-cd project_react_native_jobs
+git clone https://github.com/yourusername/career-connect-app.git
+cd career-connect-app
 ```
 
 **Installation**
@@ -107,194 +99,66 @@ npm install
 Create a new file named `.env` in the root of your project and add the following content:
 
 ```env
-X-RapidAPI-Key=
+API_KEY=your_firebase_api_key
+AUTH_DOMAIN=your_firebase_auth_domain
+PROJECT_ID=your_firebase_project_id
+STORAGE_BUCKET=your_firebase_storage_bucket
+MESSAGING_SENDER_ID=your_firebase_messaging_sender_id
+APP_ID=your_firebase_app_id
 ```
 
-Replace the placeholder values with your actual credentials. You can obtain these credentials by signing up on the [RapidAPI website](https://rapidapi.com/letscrape-6bRBa3QguO5/api/jsearch).
+Replace the placeholder values with your actual Firebase credentials.
 
 **Running the Project**
 
 ```bash
-npm start
+npx expo start
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser to view the project.
+Use the Expo Go app on your mobile device to scan the QR code, or run on an emulator.
 
-## <a name="snippets">🕸️ Snippets</a>
+## <a name="app-structure">📱 App Structure</a>
 
-<details>
-<summary><code>Search.js</code></summary>
+The app is organized into several main sections:
 
-```javascript
-import React, { useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  FlatList,
-  Image,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import { Stack, useRouter, useSearchParams } from "expo-router";
-import { Text, SafeAreaView } from "react-native";
-import axios from "axios";
+### 🏠 Home
+A personalized dashboard with job recommendations, activity summaries, and community highlights.
 
-import { ScreenHeaderBtn, NearbyJobCard } from "../../components";
-import { COLORS, icons, SIZES } from "../../constants";
-import styles from "../../styles/search";
+### 💼 Jobs
+Browse and search for jobs by popularity, category, or location. View detailed job information and save jobs for later.
 
-const JobSearch = () => {
-  const params = useSearchParams();
-  const router = useRouter();
+### 👥 Communities
+Join and participate in professional communities centered around specific technologies, industries, or topics.
 
-  const [searchResult, setSearchResult] = useState([]);
-  const [searchLoader, setSearchLoader] = useState(false);
-  const [searchError, setSearchError] = useState(null);
-  const [page, setPage] = useState(1);
+### 🗺️ Roadmaps
+Follow structured learning paths for different technologies. Track your progress as you learn new skills.
 
-  const handleSearch = async () => {
-    setSearchLoader(true);
-    setSearchResult([]);
+### 📝 Profile
+Manage your professional profile, view saved jobs, and track your application history.
 
-    try {
-      const options = {
-        method: "GET",
-        url: `https://jsearch.p.rapidapi.com/search`,
-        headers: {
-          "X-RapidAPI-Key": "",
-          "X-RapidAPI-Host": "jsearch.p.rapidapi.com",
-        },
-        params: {
-          query: params.id,
-          page: page.toString(),
-        },
-      };
+## <a name="api-integration">🔗 API Integration</a>
 
-      const response = await axios.request(options);
-      setSearchResult(response.data.data);
-    } catch (error) {
-      setSearchError(error);
-      console.log(error);
-    } finally {
-      setSearchLoader(false);
-    }
-  };
+The app uses Firebase for backend services:
 
-  const handlePagination = (direction) => {
-    if (direction === "left" && page > 1) {
-      setPage(page - 1);
-      handleSearch();
-    } else if (direction === "right") {
-      setPage(page + 1);
-      handleSearch();
-    }
-  };
+- **Authentication**: User registration and login
+- **Firestore**: Storing and retrieving job listings, community data, and user profiles
+- **Cloud Storage**: Image storage for community content and user avatars
 
-  useEffect(() => {
-    handleSearch();
-  }, []);
+Job data can be sourced from Firebase or integrated with external job listing APIs.
 
-  return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.lightWhite }}>
-      <Stack.Screen
-        options={{
-          headerStyle: { backgroundColor: COLORS.lightWhite },
-          headerShadowVisible: false,
-          headerLeft: () => (
-            <ScreenHeaderBtn
-              iconUrl={icons.left}
-              dimension="60%"
-              handlePress={() => router.back()}
-            />
-          ),
-          headerTitle: "",
-        }}
-      />
+## <a name="learning-resources">🧠 Learning Resources</a>
 
-      <FlatList
-        data={searchResult}
-        renderItem={({ item }) => (
-          <NearbyJobCard
-            job={item}
-            handleNavigate={() => router.push(`/job-details/${item.job_id}`)}
-          />
-        )}
-        keyExtractor={(item) => item.job_id}
-        contentContainerStyle={{ padding: SIZES.medium, rowGap: SIZES.medium }}
-        ListHeaderComponent={() => (
-          <>
-            <View style={styles.container}>
-              <Text style={styles.searchTitle}>{params.id}</Text>
-              <Text style={styles.noOfSearchedJobs}>Job Opportunities</Text>
-            </View>
-            <View style={styles.loaderContainer}>
-              {searchLoader ? (
-                <ActivityIndicator size="large" color={COLORS.primary} />
-              ) : (
-                searchError && <Text>Oops something went wrong</Text>
-              )}
-            </View>
-          </>
-        )}
-        ListFooterComponent={() => (
-          <View style={styles.footerContainer}>
-            <TouchableOpacity
-              style={styles.paginationButton}
-              onPress={() => handlePagination("left")}
-            >
-              <Image
-                source={icons.chevronLeft}
-                style={styles.paginationImage}
-                resizeMode="contain"
-              />
-            </TouchableOpacity>
-            <View style={styles.paginationTextBox}>
-              <Text style={styles.paginationText}>{page}</Text>
-            </View>
-            <TouchableOpacity
-              style={styles.paginationButton}
-              onPress={() => handlePagination("right")}
-            >
-              <Image
-                source={icons.chevronRight}
-                style={styles.paginationImage}
-                resizeMode="contain"
-              />
-            </TouchableOpacity>
-          </View>
-        )}
-      />
-    </SafeAreaView>
-  );
-};
+The roadmap feature includes learning paths for:
 
-export default JobSearch;
-```
+- React
+- React Native
+- JavaScript
+- Frontend Development
+- Backend Development
+- And many other technology stacks
 
-</details>
+Each roadmap provides structured learning content with step-by-step guides and resources for skill development.
 
-## <a name="links">🔗 Links</a>
+---
 
-Models and Assets used in the project can be found [here](https://drive.google.com/file/d/1VGr3R-3uta9xNj17eRHMxTELhtE2LaCm/view)
-
-## <a name="more">🚀 More</a>
-
-**Advance your skills with Next.js 14 Pro Course**
-
-Enjoyed creating this project? Dive deeper into our PRO courses for a richer learning adventure. They're packed with detailed explanations, cool features, and exercises to boost your skills. Give it a go!
-
-<a href="https://jsmastery.pro/next14" target="_blank">
-<img src="https://github.com/sujatagunale/EasyRead/assets/151519281/557837ce-f612-4530-ab24-189e75133c71" alt="Project Banner">
-</a>
-
-<br />
-<br />
-
-**Accelerate your professional journey with the Expert Training program**
-
-And if you're hungry for more than just a course and want to understand how we learn and tackle tech challenges, hop into our personalized masterclass. We cover best practices, different web skills, and offer mentorship to boost your confidence. Let's learn and grow together!
-
-<a href="https://www.jsmastery.pro/masterclass" target="_blank">
-<img src="https://github.com/sujatagunale/EasyRead/assets/151519281/fed352ad-f27b-400d-9b8f-c7fe628acb84" alt="Project Banner">
-</a>
-
-#
+Built with ❤️ using React Native and Expo
