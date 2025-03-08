@@ -11,10 +11,13 @@ import { COLORS, FONT, SIZES } from "../../../constants";
 import { LinearGradient } from "expo-linear-gradient";
 import Icon from "react-native-vector-icons/Ionicons";
 import { BlurView } from "expo-blur";
+import { useRouter } from "expo-router";
 
 const { width } = Dimensions.get("window");
 
 const HomeWelcome = ({ userData }) => {
+  const router = useRouter();
+  
   // Get time of day for greeting
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -37,6 +40,10 @@ const HomeWelcome = ({ userData }) => {
     if (completion < 85) return "Your profile is coming along nicely!";
     if (completion < 100) return "Your profile is almost complete!";
     return "Your profile is 100% complete!";
+  };
+
+  const handleProfilePress = () => {
+    router.push('profile');
   };
 
   return (
@@ -83,7 +90,7 @@ const HomeWelcome = ({ userData }) => {
             </View>
           </View>
 
-          <View style={styles.imageContainer}>
+          <TouchableOpacity style={styles.imageContainer} onPress={handleProfilePress}>
             {userData?.photoUrl ? (
               <View style={styles.imageWrapper}>
                 <Image
@@ -104,7 +111,7 @@ const HomeWelcome = ({ userData }) => {
             <View style={styles.imageBadge}>
               <Icon name="star" size={16} color="#FFF" />
             </View>
-          </View>
+          </TouchableOpacity>
         </View>
       </LinearGradient>
     </View>

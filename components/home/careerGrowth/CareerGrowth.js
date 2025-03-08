@@ -20,7 +20,7 @@ const careerTips = [
   {
     id: "1",
     title: "Perfecting Resume",
-    description: "Learn essential tips to make your resume stand out in 2023",
+    description: "Learn essential tips to make your resume stand out in 2025",
     icon: "document-text",
     color: ["#4158D0", "#C850C0"],
     image: require("../../../assets/images/resume_tips.png"),
@@ -130,7 +130,10 @@ const CareerGrowth = ({ router }) => {
   const handleCardPress = (item) => {
     router.push({
       pathname: item.route,
-      params: item.routeParams,
+      params: {
+        ...item.routeParams,
+        prefilledMessage: item.description
+      },
     });
   };
 
@@ -148,7 +151,7 @@ const CareerGrowth = ({ router }) => {
             </Text>
           </View>
           <TouchableOpacity
-            onPress={() => router.push("career-tips")}
+            onPress={() => router.push("chat")}
             style={styles.viewAllButton}
           >
             <Text style={styles.viewAllText}>View All</Text>

@@ -7,12 +7,12 @@ import {
   StyleSheet,
   TouchableOpacity,
 } from "react-native";
-import { Stack, useRouter, usePathname } from "expo-router";
+import { Stack, useRouter, usePathname, useSearchParams } from "expo-router";
 import { useFonts } from "expo-font";
 import ScreenBottom from "../components/common/bottom/ScreenBottom";
 import { COLORS, icons, images, SIZES } from "../constants";
 import ScreenHeaderBtn from "../components/common/header/ScreenHeaderBtn";
-import { AuthProvider } from "../context/AuthContext";
+import { AuthProvider, useAuth } from "../context/AuthContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import ExitConfirmationPopup from "../components/common/popup/ExitConfirmationPopup";
 import { NavigationContainer } from "@react-navigation/native";
@@ -23,6 +23,15 @@ import { Ionicons } from "@expo/vector-icons";
 export const unstable_settings = {
   initialRouteName: "home",
 };
+
+// Define screens that don't require authentication
+const publicScreens = [
+  "login",
+  "register",
+  "forgot-password",
+  "question",
+  "index",
+];
 
 // Create a custom navigation container that uses expo-router's underlying navigation
 const CustomNavigationContainer = ({ children }) => {
@@ -41,15 +50,6 @@ const Layout = () => {
   const [showExitPopup, setShowExitPopup] = useState(false);
   const [navigationHistory, setNavigationHistory] = useState(["home"]);
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
-
-  // Define screens that don't require authentication
-  const publicScreens = [
-    "login",
-    "register",
-    "forgot-password",
-    "question",
-    "index",
-  ];
 
   // All other screens require authentication
   const isProtectedRoute = !publicScreens.includes(currentScreen);
@@ -214,14 +214,6 @@ const Layout = () => {
     return publicScreens.includes(currentScreen);
   };
 
-  const navigateWithAuthCheck = (screenName) => {
-    if (!isAuthenticated && !publicScreens.includes(screenName)) {
-      router.replace("login");
-    } else {
-      router.push(screenName);
-    }
-  };
-
   // Handle exit confirmation
   const handleExitCancel = () => {
     setShowExitPopup(false);
@@ -231,50 +223,6 @@ const Layout = () => {
     setShowExitPopup(false);
     BackHandler.exitApp();
   };
-
-  // Right header component with improved notification icon
-  const HeaderRight = () => (
-    <View style={{ flexDirection: "row", alignItems: "center" }}>
-      <TouchableOpacity
-        style={styles.iconContainer}
-        onPress={() => navigateWithAuthCheck("notification")}
-        activeOpacity={0.7}
-      >
-        <View
-          style={[
-            styles.iconWrapper,
-            unreadNotificationsCount > 0 ? styles.activeIconWrapper : {},
-          ]}
-        >
-          <Ionicons
-            name={
-              currentScreen === "notification"
-                ? "notifications"
-                : "notifications"
-            }
-            size={SIZES.xLarge}
-            color={
-              currentScreen === "notification" ? COLORS.primary : COLORS.gray
-            }
-          />
-          {unreadNotificationsCount > 0 && (
-            <View style={styles.badgeContainer}>
-              <Text style={styles.badgeText}>
-                {unreadNotificationsCount > 99
-                  ? "99+"
-                  : unreadNotificationsCount}
-              </Text>
-            </View>
-          )}
-        </View>
-      </TouchableOpacity>
-      <ScreenHeaderBtn
-        iconUrl={userProfilePic ? { uri: userProfilePic } : images.profile}
-        dimension="100%"
-        handlePress={() => navigateWithAuthCheck("profile")}
-      />
-    </View>
-  );
 
   if (!fontsLoaded) {
     return null;
@@ -288,163 +236,7 @@ const Layout = () => {
   return (
     <AuthProvider>
       <CustomNavigationContainer>
-        <Stack
-          initialRouteName="home"
-          screenOptions={{
-            headerStyle: { backgroundColor: COLORS.lightWhite },
-            headerShadowVisible: false,
-            headerBackVisible: false,
-            gestureEnabled: false,
-          }}
-        >
-          <Stack.Screen
-            name="index"
-            options={{
-              headerShown: false,
-            }}
-          />
-          <Stack.Screen
-            name="question"
-            options={{
-              headerShown: false,
-            }}
-          />
-          <Stack.Screen
-            name="account"
-            options={{
-              headerShown: false,
-              presentation: "card", // Added presentation mode for better animation
-            }}
-          />
-
-          <Stack.Screen
-            name="login"
-            options={{
-              headerShown: false,
-            }}
-          />
-          <Stack.Screen
-            name="register"
-            options={{
-              headerShown: false,
-            }}
-          />
-          <Stack.Screen
-            name="forgot-password"
-            options={{
-              headerShown: false,
-            }}
-          />
-          <Stack.Screen
-            name="EditProfileScreen"
-            options={{
-              headerShown: false,
-            }}
-          />
-          <Stack.Screen
-            name="home"
-            options={{
-              headerTitle: "Home",
-              headerTitleStyle: {
-                fontFamily: "DMBold",
-                color: COLORS.primary,
-                fontSize: SIZES.large,
-              },
-              headerRight: () => <HeaderRight />,
-            }}
-          />
-          <Stack.Screen
-            name="job"
-            options={{
-              headerTitle: "Jobs",
-              headerTitleStyle: {
-                fontFamily: "DMBold",
-                color: COLORS.primary,
-                fontSize: SIZES.large,
-              },
-              headerRight: () => <HeaderRight />,
-            }}
-          />
-          <Stack.Screen
-            name="community"
-            options={{
-              headerTitle: "Community",
-              headerTitleStyle: {
-                fontFamily: "DMBold",
-                color: COLORS.primary,
-                fontSize: SIZES.large,
-              },
-              headerRight: () => <HeaderRight />,
-            }}
-          />
-          <Stack.Screen
-            name="chat"
-            options={{
-              headerTitle: "Chat",
-              headerTitleStyle: {
-                fontFamily: "DMBold",
-                color: COLORS.primary,
-                fontSize: SIZES.large,
-              },
-              headerRight: () => <HeaderRight />,
-            }}
-          />
-          <Stack.Screen
-            name="profile"
-            options={{
-              headerTitle: "Profile",
-              headerTitleStyle: {
-                fontFamily: "DMBold",
-                color: COLORS.primary,
-                fontSize: SIZES.large,
-              },
-              headerRight: () => <HeaderRight />,
-            }}
-          />
-          <Stack.Screen
-            name="roadmap"
-            options={{
-              headerTitle: "Profile",
-              headerTitleStyle: {
-                fontFamily: "DMBold",
-                color: COLORS.primary,
-                fontSize: SIZES.large,
-              },
-              headerRight: () => <HeaderRight />,
-            }}
-          />
-          <Stack.Screen
-            name="notification"
-            options={{
-              headerTitle: "Notifications",
-              headerTitleStyle: {
-                fontFamily: "DMBold",
-                color: COLORS.primary,
-                fontSize: SIZES.large,
-              },
-              headerRight: () => <HeaderRight />,
-            }}
-          />
-          <Stack.Screen
-            name="session"
-            options={{
-              headerTitle: "Session",
-              headerTitleStyle: {
-                fontFamily: "DMBold",
-                color: COLORS.primary,
-                fontSize: SIZES.large,
-              },
-              headerRight: () => <HeaderRight />,
-            }}
-          />
-          <Stack.Screen
-            name="SavedJobs"
-            options={{
-              headerShown: false,
-            }}
-          />
-        </Stack>
-
+        <StackLayout activeScreen={activeScreen} />
         {!shouldHideNavigation() && isAuthenticated && (
           <ScreenBottom activeScreen={activeScreen} />
         )}
@@ -456,6 +248,209 @@ const Layout = () => {
         />
       </CustomNavigationContainer>
     </AuthProvider>
+  );
+};
+
+const StackLayout = ({ activeScreen }) => {
+  const { isAuthenticated } = useAuth();
+  const searchParams = useSearchParams();
+  const hideBottomNav = searchParams?.hideBottomNav === true;
+  const router = useRouter();
+
+  const navigateWithAuthCheck = (screenName) => {
+    if (!isAuthenticated && !publicScreens.includes(screenName)) {
+      router.replace("login");
+    } else {
+      router.push(screenName);
+    }
+  };
+
+  const HeaderRight = () => (
+    <View style={{ flexDirection: "row", alignItems: "center" }}>
+      <TouchableOpacity
+        style={styles.iconContainer}
+        onPress={() => navigateWithAuthCheck("notification")}
+        activeOpacity={0.7}
+      >
+        <View style={[styles.iconWrapper]}>
+          <Ionicons
+            name="notifications"
+            size={SIZES.xLarge}
+            color={COLORS.gray}
+          />
+        </View>
+      </TouchableOpacity>
+      <ScreenHeaderBtn
+        iconUrl={images.profile}
+        dimension="100%"
+        handlePress={() => navigateWithAuthCheck("profile")}
+      />
+    </View>
+  );
+
+  return (
+    <>
+      <Stack screenOptions={{
+        headerStyle: { backgroundColor: COLORS.lightWhite },
+        headerShadowVisible: false,
+        headerLeft: () => (
+          <ScreenHeaderBtn
+            iconUrl={icons.left}
+            dimension="60%"
+            handlePress={() => router.back()}
+          />
+        ),
+      }}>
+        <Stack.Screen
+          name="index"
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="question"
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="account"
+          options={{
+            headerShown: false,
+            presentation: "card", // Added presentation mode for better animation
+          }}
+        />
+
+        <Stack.Screen
+          name="login"
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="register"
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="forgot-password"
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="EditProfileScreen"
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="home"
+          options={{
+            headerTitle: "Home",
+            headerTitleStyle: {
+              fontFamily: "DMBold",
+              color: COLORS.primary,
+              fontSize: SIZES.large,
+            },
+            headerRight: () => <HeaderRight />,
+          }}
+        />
+        <Stack.Screen
+          name="job"
+          options={{
+            headerTitle: "Jobs",
+            headerTitleStyle: {
+              fontFamily: "DMBold",
+              color: COLORS.primary,
+              fontSize: SIZES.large,
+            },
+            headerRight: () => <HeaderRight />,
+          }}
+        />
+        <Stack.Screen
+          name="community"
+          options={{
+            headerTitle: "Community",
+            headerTitleStyle: {
+              fontFamily: "DMBold",
+              color: COLORS.primary,
+              fontSize: SIZES.large,
+            },
+            headerRight: () => <HeaderRight />,
+          }}
+        />
+        <Stack.Screen
+          name="chat"
+          options={{
+            headerTitle: "Chat",
+            headerTitleStyle: {
+              fontFamily: "DMBold",
+              color: COLORS.primary,
+              fontSize: SIZES.large,
+            },
+            headerRight: () => <HeaderRight />,
+          }}
+        />
+        <Stack.Screen
+          name="profile"
+          options={{
+            headerTitle: "Profile",
+            headerTitleStyle: {
+              fontFamily: "DMBold",
+              color: COLORS.primary,
+              fontSize: SIZES.large,
+            },
+            headerRight: () => <HeaderRight />,
+          }}
+        />
+        <Stack.Screen
+          name="roadmap"
+          options={{
+            headerTitle: "Profile",
+            headerTitleStyle: {
+              fontFamily: "DMBold",
+              color: COLORS.primary,
+              fontSize: SIZES.large,
+            },
+            headerRight: () => <HeaderRight />,
+          }}
+        />
+        <Stack.Screen
+          name="notification"
+          options={{
+            headerTitle: "Notifications",
+            headerTitleStyle: {
+              fontFamily: "DMBold",
+              color: COLORS.primary,
+              fontSize: SIZES.large,
+            },
+            headerRight: () => <HeaderRight />,
+          }}
+        />
+        <Stack.Screen
+          name="session"
+          options={{
+            headerTitle: "Session",
+            headerTitleStyle: {
+              fontFamily: "DMBold",
+              color: COLORS.primary,
+              fontSize: SIZES.large,
+            },
+            headerRight: () => <HeaderRight />,
+          }}
+        />
+        <Stack.Screen
+          name="SavedJobs"
+          options={{
+            headerShown: false,
+          }}
+        />
+      </Stack>
+      
+      {!hideBottomNav && <ScreenBottom activeScreen={activeScreen} />}
+    </>
   );
 };
 

@@ -60,7 +60,7 @@ const ActivitySummary = ({ userData, router }) => {
       icon: <Icon name="document-text" size={22} color={COLORS.white} />,
       value: applications,
       gradientColors: ["#4CAF50", "#388E3C", "#2E7D32"],
-      route: "applications",
+      // route: "applications",
       animation: scaleAnim1,
     },
     {
@@ -69,7 +69,7 @@ const ActivitySummary = ({ userData, router }) => {
       icon: <Icon name="bookmark" size={22} color={COLORS.white} />,
       value: savedJobs,
       gradientColors: ["#2196F3", "#1E88E5", "#1976D2"],
-      route: "saved-jobs",
+      route: "SavedJobs",
       animation: scaleAnim2,
     },
     {
@@ -84,7 +84,7 @@ const ActivitySummary = ({ userData, router }) => {
       ),
       value: interviews,
       gradientColors: ["#FF9800", "#FB8C00", "#F57C00"],
-      route: "interviews",
+      // route: "interviews",
       animation: scaleAnim3,
     },
     {
@@ -93,13 +93,15 @@ const ActivitySummary = ({ userData, router }) => {
       icon: <Icon name="eye" size={22} color={COLORS.white} />,
       value: viewedProfile,
       gradientColors: ["#9C27B0", "#8E24AA", "#7B1FA2"],
-      route: "profile-analytics",
+      // route: "profile-analytics",
       animation: scaleAnim4,
     },
   ];
 
   const handleMetricPress = (route) => {
-    router.push(route);
+    if (route) {
+      router.push(route);
+    }
   };
 
   return (

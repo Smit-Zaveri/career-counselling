@@ -48,38 +48,25 @@ const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 // Initialize Auth with AsyncStorage persistence
 let auth;
 
-if (Platform.OS !== "web") {
-  try {
-    // Simplified auth initialization to avoid accessing undefined properties
-    auth = getAuth(app);
-    
-    // Only initialize auth with persistence if we don't already have it
-    if (!auth.currentUser && !auth._canUseIndexedDBPromise) {
-      // Re-initialize with persistence
-      auth = initializeAuth(app, {
-        persistence: getReactNativePersistence(AsyncStorage),
-      });
-    }
-  } catch (error) {
-    console.log("Auth initialization error:", error.message);
-    // Fallback to basic auth
+try {
+  if (Platform.OS !== "web") {
+    // Initialize auth with persistence for React Native
+    auth = initializeAuth(app, {
+      persistence: getReactNativePersistence(AsyncStorage)
+    });
+  } else {
+    // Use regular auth for web platform
     auth = getAuth(app);
   }
-} else {
-  auth = getAuth(app);
-}
-
-// Ensure auth is always valid
-if (!auth) {
-  console.warn("Auth initialization failed, falling back to default auth");
+} catch (error) {
+  console.error("Auth initialization error:", error);
+  // Fallback to basic auth if persistence initialization fails
   auth = getAuth(app);
 }
 
 // Initialize Firestore with singleton pattern
 let db;
 try {
-  db = getFirestore(app);
-} catch (error) {
   if (Platform.OS !== "web") {
     db = initializeFirestore(app, {
       cacheSizeBytes: CACHE_SIZE_UNLIMITED,
@@ -87,6 +74,9 @@ try {
   } else {
     db = getFirestore(app);
   }
+} catch (error) {
+  console.error("Firestore initialization error:", error);
+  db = getFirestore(app);
 }
 
 // Helper functions for job features with additional error handling
