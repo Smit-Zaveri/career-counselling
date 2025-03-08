@@ -151,6 +151,21 @@ const Session = () => {
         );
       };
 
+      // Helper function to determine booking status (red, orange, or green)
+      const getDotColor = (availableSlots, bookedSlots) => {
+        if (!availableSlots || availableSlots.length === 0) return "red";
+
+        // Calculate actual availability percentage based on booked slots
+        const totalSlots = availableSlots.length;
+        const bookedCount = bookedSlots.length;
+        const availableCount = totalSlots - bookedCount;
+        const availabilityPercentage = (availableCount / totalSlots) * 100;
+
+        if (availabilityPercentage === 0) return "red";
+        if (availabilityPercentage <= 50) return "orange";
+        return "green";
+      };
+
       if (counselor.availableDates && counselor.availableDates.length > 0) {
         counselor.availableDates.forEach((dateInfo) => {
           try {
@@ -158,14 +173,39 @@ const Session = () => {
               const date = dateInfo.date.toDate();
               if (date >= today) {
                 const dateString = formatDateString(date);
-                const isFullyBooked = !hasAvailableSlots(
-                  dateInfo,
-                  counselor.bookedSlots || []
+
+                // Get all slots available for this date
+                const availableSlots = Array.isArray(dateInfo.slots)
+                  ? dateInfo.slots
+                  : [];
+
+                // Get booked slots for this date
+                const bookedTimesForDate = (counselor.bookedSlots || [])
+                  .filter((slot) => {
+                    if (!slot.date || typeof slot.date.toDate !== "function")
+                      return false;
+                    const bookedDate = slot.date.toDate();
+                    return formatDateString(bookedDate) === dateString;
+                  })
+                  .map((slot) => slot.time);
+
+                // Filter to get only the slots that are actually booked
+                const actuallyBookedSlots = bookedTimesForDate.filter((time) =>
+                  availableSlots.includes(time)
+                );
+
+                const isFullyBooked =
+                  availableSlots.length > 0 &&
+                  actuallyBookedSlots.length === availableSlots.length;
+
+                const dotColor = getDotColor(
+                  availableSlots,
+                  actuallyBookedSlots
                 );
 
                 marks[dateString] = {
                   marked: true,
-                  dotColor: isFullyBooked ? "red" : "green",
+                  dotColor: dotColor,
                   disabled: isFullyBooked,
                 };
               }
@@ -196,6 +236,8 @@ const Session = () => {
             dayAvailability.slots.length > 0
           ) {
             const dateStr = formatDateString(date);
+            const totalSlots = [...dayAvailability.slots];
+
             const bookedSlotsForThisDay = (counselor.bookedSlots || [])
               .filter((slot) => {
                 if (!slot.date || typeof slot.date.toDate !== "function")
@@ -205,13 +247,20 @@ const Session = () => {
               })
               .map((slot) => slot.time);
 
-            const allSlotsBooked = dayAvailability.slots.every((time) =>
-              bookedSlotsForThisDay.includes(time)
+            // Filter to get only the slots that are actually booked from available slots
+            const actuallyBookedSlots = bookedSlotsForThisDay.filter((time) =>
+              totalSlots.includes(time)
             );
+
+            const allSlotsBooked =
+              totalSlots.length > 0 &&
+              actuallyBookedSlots.length === totalSlots.length;
+
+            const dotColor = getDotColor(totalSlots, actuallyBookedSlots);
 
             marks[dateStr] = {
               marked: true,
-              dotColor: allSlotsBooked ? "red" : "green",
+              dotColor: dotColor,
               disabled: allSlotsBooked,
             };
           }
