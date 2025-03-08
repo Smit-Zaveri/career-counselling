@@ -396,148 +396,158 @@ const Chat = () => {
         </TouchableOpacity>
       </View>
 
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
-      >
-        {/* Backdrop overlay when history is shown */}
-        {showHistory && (
-          <TouchableOpacity
-            style={styles.historyBackdrop}
-            activeOpacity={1}
-            onPress={toggleHistoryPanel}
-          />
-        )}
-
-        {/* Chat History Panel with fixed animation */}
-        <Animated.View
-          style={[
-            styles.historyPanel,
-            { transform: [{ translateX: slideAnim }] },
-          ]}
-        >
-          <ChatHistoryList
-            chatSessions={chatSessions}
-            onSelectChat={loadChat}
-            onNewChat={startNewChat}
-            onDeleteChat={handleDeleteChat} // Add this prop
-            isLoading={loadingChats}
-            currentChatId={currentChatId}
-          />
-        </Animated.View>
-
-        {/* Error Banner */}
-        {errorState && (
-          <View style={styles.errorBanner}>
-            <Ionicons name="alert-circle" size={20} color={COLORS.white} />
-            <Text style={styles.errorText}>{errorState}</Text>
-            <TouchableOpacity onPress={() => setErrorState(null)}>
-              <Ionicons name="close" size={20} color={COLORS.white} />
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Main Chat Area */}
-        <ScrollView
-          ref={scrollViewRef}
-          style={styles.messagesContainer}
-          contentContainerStyle={{ paddingBottom: 100 }}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={[COLORS.primary]}
-              tintColor={COLORS.primary}
-              title="Pull to restart chat"
-              titleColor={COLORS.gray}
+      <View style={styles.mainContainer}>
+        <View style={styles.container}>
+          {/* Backdrop overlay when history is shown */}
+          {showHistory && (
+            <TouchableOpacity
+              style={styles.historyBackdrop}
+              activeOpacity={1}
+              onPress={toggleHistoryPanel}
             />
-          }
-        >
-          {messages.length === 0 && !isLoading ? (
-            <View style={styles.emptyChatContainer}>
-              <Ionicons name="chatbubbles" size={60} color={COLORS.gray2} />
-              <Text style={styles.emptyChatText}>{emptyChatText}</Text>
-              {!userId ? (
-                <TouchableOpacity
-                  style={styles.loginButton}
-                  onPress={() => router.push("login")}
-                >
-                  <Text style={styles.loginButtonText}>Log In</Text>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity
-                  style={styles.startNewChatButton}
-                  onPress={startNewChat}
-                >
-                  <Text style={styles.startNewChatText}>Start a New Chat</Text>
-                </TouchableOpacity>
-              )}
+          )}
+
+          {/* Chat History Panel with fixed animation */}
+          <Animated.View
+            style={[
+              styles.historyPanel,
+              { transform: [{ translateX: slideAnim }] },
+            ]}
+          >
+            <ChatHistoryList
+              chatSessions={chatSessions}
+              onSelectChat={loadChat}
+              onNewChat={startNewChat}
+              onDeleteChat={handleDeleteChat}
+              isLoading={loadingChats}
+              currentChatId={currentChatId}
+            />
+          </Animated.View>
+
+          {/* Error Banner */}
+          {errorState && (
+            <View style={styles.errorBanner}>
+              <Ionicons name="alert-circle" size={20} color={COLORS.white} />
+              <Text style={styles.errorText}>{errorState}</Text>
+              <TouchableOpacity onPress={() => setErrorState(null)}>
+                <Ionicons name="close" size={20} color={COLORS.white} />
+              </TouchableOpacity>
             </View>
-          ) : (
-            messages.map((message, index) => (
-              <View
-                key={index.toString()}
-                style={[
-                  styles.messageBubble,
-                  message.isUser ? styles.userMessage : styles.aiMessage,
-                ]}
-              >
-                {renderMessageContent(message)}
-                {message.timestamp && (
-                  <Text style={styles.messageTime}>
-                    {new Date(message.timestamp).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </Text>
+          )}
+
+          {/* Main Chat Area */}
+          <ScrollView
+            ref={scrollViewRef}
+            style={styles.messagesContainer}
+            contentContainerStyle={styles.messagesContentContainer}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={[COLORS.primary]}
+                tintColor={COLORS.primary}
+                title="Pull to restart chat"
+                titleColor={COLORS.gray}
+              />
+            }
+          >
+            {messages.length === 0 && !isLoading ? (
+              <View style={styles.emptyChatContainer}>
+                <Ionicons name="chatbubbles" size={60} color={COLORS.gray2} />
+                <Text style={styles.emptyChatText}>{emptyChatText}</Text>
+                {!userId ? (
+                  <TouchableOpacity
+                    style={styles.loginButton}
+                    onPress={() => router.push("login")}
+                  >
+                    <Text style={styles.loginButtonText}>Log In</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    style={styles.startNewChatButton}
+                    onPress={startNewChat}
+                  >
+                    <Text style={styles.startNewChatText}>Start a New Chat</Text>
+                  </TouchableOpacity>
                 )}
               </View>
-            ))
-          )}
-
-          {isLoading && (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator color={COLORS.primary} size="small" />
-              <Text style={styles.loadingText}>Thinking...</Text>
-            </View>
-          )}
-
-          {messages.length === 1 && (
-            <View style={styles.suggestionsContainer}>
-              <Text style={styles.suggestionsTitle}>Try asking:</Text>
-              {suggestedQuestions.map((question, index) => (
-                <TouchableOpacity
+            ) : (
+              messages.map((message, index) => (
+                <View
                   key={index.toString()}
-                  style={styles.suggestionButton}
-                  onPress={() => sendMessage(question)}
+                  style={[
+                    styles.messageBubble,
+                    message.isUser ? styles.userMessage : styles.aiMessage,
+                  ]}
                 >
-                  <Text style={styles.suggestionText}>{question}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-        </ScrollView>
+                  {renderMessageContent(message)}
+                  {message.timestamp && (
+                    <Text style={styles.messageTime}>
+                      {new Date(message.timestamp).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </Text>
+                  )}
+                </View>
+              ))
+            )}
 
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.input}
-            value={input}
-            onChangeText={setInput}
-            placeholder="Ask about career advice..."
-            placeholderTextColor={COLORS.gray}
-            multiline
-            maxLength={200}
-          />
-          <TouchableOpacity
-            style={[styles.sendButton, isLoading && styles.sendButtonDisabled]}
-            onPress={() => sendMessage()}
-            disabled={isLoading}
-          >
-            <Ionicons name="send" size={20} color={COLORS.white} />
-          </TouchableOpacity>
+            {isLoading && (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator color={COLORS.primary} size="small" />
+                <Text style={styles.loadingText}>Thinking...</Text>
+              </View>
+            )}
+
+            {messages.length === 1 && (
+              <View style={styles.suggestionsContainer}>
+                <Text style={styles.suggestionsTitle}>Try asking:</Text>
+                {suggestedQuestions.map((question, index) => (
+                  <TouchableOpacity
+                    key={index.toString()}
+                    style={styles.suggestionButton}
+                    onPress={() => sendMessage(question)}
+                  >
+                    <Text style={styles.suggestionText}>{question}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </ScrollView>
         </View>
-      </KeyboardAvoidingView>
+
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 85}
+          style={[
+            styles.keyboardAvoidView,
+            Platform.OS === "android" && { position: "relative" }
+          ]}
+        >
+          <View style={[
+            styles.inputContainer,
+            Platform.OS === "android" && { position: "relative" }
+          ]}>
+            <TextInput
+              style={styles.input}
+              value={input}
+              onChangeText={setInput}
+              placeholder="Ask about career advice..."
+              placeholderTextColor={COLORS.gray}
+              multiline
+              maxLength={200}
+            />
+            <TouchableOpacity
+              style={[styles.sendButton, isLoading && styles.sendButtonDisabled]}
+              onPress={() => sendMessage()}
+              disabled={isLoading}
+            >
+              <Ionicons name="send" size={20} color={COLORS.white} />
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </View>
     </SafeAreaView>
   );
 };
@@ -563,15 +573,18 @@ const styles = StyleSheet.create({
   newChatButton: {
     padding: SIZES.small,
   },
+  mainContainer: {
+    flex: 1,
+    position: 'relative',
+  },
   container: {
     flex: 1,
     backgroundColor: COLORS.lightWhite,
-    marginBottom: 84,
   },
   messagesContainer: {
     flex: 1,
     padding: SIZES.medium,
-    marginBottom: 84,
+    paddingBottom: 80, // Increased from original
   },
   messageBubble: {
     maxWidth: "80%",
@@ -601,15 +614,10 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     flexDirection: "row",
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: COLORS.lightWhite,
     padding: SIZES.medium,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.gray2,
-    paddingBottom: Platform.OS === "ios" ? SIZES.large : SIZES.medium,
+    paddingBottom: Platform.OS === "ios" ? SIZES.medium : SIZES.medium,
+    backgroundColor: COLORS.lightWhite,
+    zIndex: 1000,
   },
   input: {
     flex: 1,
@@ -619,6 +627,7 @@ const styles = StyleSheet.create({
     marginRight: SIZES.small,
     maxHeight: 100,
     paddingLeft: SIZES.medium,
+    fontSize: 16,
   },
   sendButton: {
     backgroundColor: COLORS.primary,
@@ -795,6 +804,17 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     // elevation: 8, // Increased elevation for better shadow on Android
+  },
+  keyboardAvoidView: {
+    backgroundColor: COLORS.lightWhite,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.gray2,
+    paddingBottom: Platform.OS === "ios" ? 20 : 0,
+    marginBottom: Platform.OS === "ios" ? 60 : 85, // Increased bottom margin for Android
+  },
+  messagesContentContainer: {
+    flexGrow: 1,
+    paddingBottom: 120, // Adjusted padding to prevent content from being hidden
   },
 });
 

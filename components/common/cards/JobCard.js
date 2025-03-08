@@ -72,33 +72,7 @@ const JobCard = ({
         )}
       </View>
 
-      {showUnsaveButton && (
-        <View style={styles.buttonSection}>
-          <TouchableOpacity
-            style={styles.viewButton}
-            onPress={handleNavigate}
-            disabled={isRemoving}
-          >
-            <Text style={styles.viewButtonText}>View Details</Text>
-            <Ionicons name="arrow-forward" size={16} color={COLORS.white} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.unsaveButton, isRemoving && { opacity: 0.7 }]}
-            onPress={handleUnsave}
-            disabled={isRemoving}
-          >
-            {isRemoving ? (
-              <ActivityIndicator size="small" color={COLORS.white} />
-            ) : (
-              <>
-                <Ionicons name="trash-outline" size={16} color={COLORS.white} />
-                <Text style={styles.unsaveButtonText}>Remove</Text>
-              </>
-            )}
-          </TouchableOpacity>
-        </View>
-      )}
+      
     </TouchableOpacity>
   );
 };

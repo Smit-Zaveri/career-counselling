@@ -441,14 +441,14 @@ const JobDetails = () => {
                     size={20}
                     color={jobSaved ? COLORS.primary : COLORS.white}
                   />
-                  <Text
+                  {/* <Text
                     style={[
                       styles.saveButtonText,
                       { color: jobSaved ? COLORS.primary : COLORS.white },
                     ]}
                   >
                     {jobSaved ? "Saved" : "Save"}
-                  </Text>
+                  </Text> */}
                 </>
               )}
             </TouchableOpacity>
@@ -622,11 +622,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     padding: SIZES.medium,
     backgroundColor: COLORS.white,
-    elevation: 5,
+    // elevation: 5,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
+    // shadowRadius: 4,
   },
   saveFooterButton: {
     flex: 1,
@@ -643,7 +643,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   applyButton: {
-    flex: 2,
+    flex: 8,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
