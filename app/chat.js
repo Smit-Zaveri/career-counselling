@@ -62,7 +62,7 @@ const Chat = () => {
   const [loadingChats, setLoadingChats] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const scrollViewRef = useRef(null);
-  const slideAnim = useRef(new Animated.Value(-screenWidth)).current;
+  // Remove slideAnim and isAnimating state
   const [errorState, setErrorState] = useState(null);
   const [emptyChatText, setEmptyChatText] = useState(
     "Start a new conversation or select from your history"
@@ -167,18 +167,10 @@ const Chat = () => {
     [userId, currentChatId, showHistory]
   );
 
-  // Toggle history panel with improved animation logic
+  // Simplify toggle history panel function
   const toggleHistoryPanel = useCallback(() => {
-    const newShowHistory = !showHistory;
-    setShowHistory(newShowHistory);
-
-    // Animate panel in or out based on newShowHistory (not the old state)
-    Animated.timing(slideAnim, {
-      toValue: newShowHistory ? 0 : -screenWidth,
-      duration: 300,
-      useNativeDriver: true,
-    }).start();
-  }, [showHistory, slideAnim]);
+    setShowHistory(prevState => !prevState);
+  }, []);
 
   useEffect(() => {
     // Start a new chat if we don't have one and there's no history
@@ -383,8 +375,13 @@ const Chat = () => {
         <TouchableOpacity
           style={styles.historyButton}
           onPress={toggleHistoryPanel}
+          hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
         >
-          <Ionicons name="menu" size={24} color={COLORS.primary} />
+          <Ionicons 
+            name={showHistory ? "close" : "menu"} 
+            size={24} 
+            color={COLORS.primary} 
+          />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>AI Career Assistant</Text>
         <TouchableOpacity style={styles.newChatButton} onPress={startNewChat}>
@@ -407,22 +404,19 @@ const Chat = () => {
             />
           )}
 
-          {/* Chat History Panel with fixed animation */}
-          <Animated.View
-            style={[
-              styles.historyPanel,
-              { transform: [{ translateX: slideAnim }] },
-            ]}
-          >
-            <ChatHistoryList
-              chatSessions={chatSessions}
-              onSelectChat={loadChat}
-              onNewChat={startNewChat}
-              onDeleteChat={handleDeleteChat}
-              isLoading={loadingChats}
-              currentChatId={currentChatId}
-            />
-          </Animated.View>
+          {/* Simplified Chat History Panel without animation */}
+          {showHistory && (
+            <View style={styles.historyPanel}>
+              <ChatHistoryList
+                chatSessions={chatSessions}
+                onSelectChat={loadChat}
+                onNewChat={startNewChat}
+                onDeleteChat={handleDeleteChat}
+                isLoading={loadingChats}
+                currentChatId={currentChatId}
+              />
+            </View>
+          )}
 
           {/* Error Banner */}
           {errorState && (
@@ -569,6 +563,10 @@ const styles = StyleSheet.create({
   },
   historyButton: {
     padding: SIZES.small,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: SIZES.small,
+    backgroundColor: COLORS.gray2,
   },
   newChatButton: {
     padding: SIZES.small,
@@ -587,30 +585,50 @@ const styles = StyleSheet.create({
     paddingBottom: 80, // Increased from original
   },
   messageBubble: {
-    maxWidth: "80%",
+    maxWidth: "85%",
     padding: SIZES.medium,
     marginVertical: SIZES.small,
-    borderRadius: SIZES.small,
+    borderRadius: SIZES.medium,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.18,
+    shadowRadius: 1.00,
+    elevation: 1,
   },
   userMessage: {
     alignSelf: "flex-end",
     backgroundColor: COLORS.primary,
+    borderTopRightRadius: 4,
+    borderBottomLeftRadius: SIZES.medium,
+    borderBottomRightRadius: SIZES.medium,
+    borderTopLeftRadius: SIZES.medium,
   },
   aiMessage: {
     alignSelf: "flex-start",
-    backgroundColor: COLORS.gray2,
+    backgroundColor: COLORS.white,
+    borderTopLeftRadius: 4,
+    borderBottomLeftRadius: SIZES.medium,
+    borderBottomRightRadius: SIZES.medium,
+    borderTopRightRadius: SIZES.medium,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
   },
   userMessageText: {
     color: COLORS.white,
-    fontSize: SIZES.small + 2,
-    lineHeight: 20,
+    fontSize: SIZES.medium,
+    lineHeight: 22,
+    fontWeight: '400',
   },
   messageTime: {
     fontSize: SIZES.small - 2,
     color: COLORS.gray,
     alignSelf: "flex-end",
-    marginTop: 4,
+    marginTop: 6,
     opacity: 0.7,
+    fontStyle: 'italic',
   },
   inputContainer: {
     flexDirection: "row",
@@ -679,8 +697,9 @@ const styles = StyleSheet.create({
     color: COLORS.gray,
   },
   markdownBody: {
-    color: "black",
-    fontSize: SIZES.small + 2,
+    color: "#333",
+    fontSize: SIZES.medium,
+    lineHeight: 22,
   },
   markdownH1: {
     color: "black",
@@ -701,8 +720,8 @@ const styles = StyleSheet.create({
     marginVertical: SIZES.small / 2,
   },
   markdownParagraph: {
-    color: "black",
-    fontSize: SIZES.small + 2,
+    color: "#333",
+    fontSize: SIZES.medium,
     lineHeight: 22,
     marginVertical: SIZES.small / 2,
   },
@@ -794,16 +813,19 @@ const styles = StyleSheet.create({
   historyPanel: {
     position: "absolute",
     top: 0,
-    left: 0, // Changed from -screenWidth to 0
-    width: screenWidth * 0.7, // Increased from 0.75 to 0.8 for better visibility
+    left: 0,
+    width: screenWidth * 0.8,
     height: "100%",
-    backgroundColor: "transparent",
-    zIndex: 15, // Increased z-index to ensure it's above the backdrop
-    // shadowColor: "#000",
-    // shadowOffset: { width: 2, height: 0 },
+    backgroundColor: COLORS.lightWhite,
+    zIndex: 15,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 2,
+      height: 0,
+    },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
-    // elevation: 8, // Increased elevation for better shadow on Android
+    elevation: 8,
   },
   keyboardAvoidView: {
     backgroundColor: COLORS.lightWhite,
