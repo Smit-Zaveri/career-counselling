@@ -139,18 +139,24 @@ const Login = () => {
           <View style={styles.innerContainer}>
             <View style={styles.companyContainer}>
               <View style={styles.logoContainer}>
-                <LinearGradient
-                  colors={[COLORS.primary, "#4080ff"]}
-                  style={styles.logoBackground}
-                >
-                  <Text style={styles.logoText}>CC</Text>
-                </LinearGradient>
+                
+                  <Image
+                    source={require("../assets/images/logo.png")}
+                    style={styles.logoImage}
+                  />
               </View>
-              <Text style={styles.companyName}>Career Connect</Text>
-              <Text style={styles.companyTagline}>Build Your Future Today</Text>
+              <View style={styles.companyNameContainer}>
+                <Text style={styles.companyNameFirst}>Career</Text>
+                <Text style={styles.companyNameSecond}>Conn</Text>
+                <Text style={styles.companyNameThird}>ect</Text>
+              </View>
+              <Text style={styles.companyTagline}>
+              Where Dreams Inspire the Future
+              </Text>
             </View>
 
             <View style={styles.formContainer}>
+              
               <View style={styles.formHeader}>
                 <Text style={styles.title}>Welcome Back</Text>
                 <Text style={styles.subtitle}>
@@ -220,7 +226,9 @@ const Login = () => {
               </View>
 
               <View style={styles.registerContainer}>
-                <Text style={styles.registerText}>Don't have an account? </Text>
+                <Text style={styles.registerText}>
+                  Don't have an account?{" "}
+                </Text>
                 <TouchableOpacity onPress={() => router.push("register")}>
                   <Text style={styles.registerLink}>Register</Text>
                 </TouchableOpacity>
@@ -290,22 +298,33 @@ const styles = StyleSheet.create({
   logoContainer: {
     marginBottom: SIZES.medium,
   },
-  logoBackground: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
+  logoImage: {
+    width: 90,
+    height: 90,
+    borderRadius: 65,
     justifyContent: "center",
     alignItems: "center",
   },
-  logoText: {
-    fontFamily: FONT.bold,
-    fontSize: 28,
-    color: COLORS.white,
+  companyNameContainer: {
+    flexDirection: "row",
+    alignItems: "center",
   },
-  companyName: {
+  companyNameFirst: {
     fontFamily: FONT.bold,
-    fontSize: SIZES.xxLarge,
-    color: COLORS.primary,
+    fontSize: 35,
+    color: "#312651",
+    letterSpacing: 1,
+  },
+  companyNameSecond: {
+    fontFamily: FONT.bold,
+    fontSize: 35,
+    color: "#72bb9d",
+    letterSpacing: 1,
+  },
+  companyNameThird: {
+    fontFamily: FONT.bold,
+    fontSize: 35,
+    color: "#e99841",
     letterSpacing: 1,
   },
   companyTagline: {
